@@ -1,0 +1,40 @@
+# Development overrides — use with:
+# docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app # hot reload: code changes reflect instantly
+      - uv_cache:/root/.cache/uv # persist uv cache across rebuilds
+    environment:
+      - PYTHONUNBUFFERED=1
+      - VIRTUAL_ENV=/venv
+      - PYTHONPATH=/app
+    command: /venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+      - uv_cache:/root/.cache/uv
+    environment:
+      - PYTHONUNBUFFERED=1
+      - VIRTUAL_ENV=/venv
+      - PYTHONPATH=/app
+    command: /venv/bin/celery -A app.workers.celery_app worker --loglevel=debug --concurrency=2
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+volumes:
+  uv_cache:
