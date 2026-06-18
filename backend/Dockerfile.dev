@@ -1,0 +1,24 @@
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+
+WORKDIR /app
+
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    VIRTUAL_ENV=/venv \
+    PATH="/venv/bin:$PATH" \
+    PYTHONPATH="/app"
+
+COPY pyproject.toml uv.lock ./
+
+# Explicitly create venv at /venv and sync all deps into it
+RUN uv venv /venv && \
+    UV_PROJECT_ENVIRONMENT=/venv uv sync --frozen --no-install-project --dev
+
+# Verify binaries landed correctly — fast fail at build time
+RUN /venv/bin/uvicorn --version && /venv/bin/celery --version
+
+# No COPY . . — source is volume-mounted for hot reload
+EXPOSE 8000
