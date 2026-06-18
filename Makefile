@@ -17,7 +17,7 @@ down:
 
 # Run alembic migrations
 migrate:
-	docker compose exec api uv run alembic upgrade head
+	docker compose exec api alembic upgrade head
 
 # Create a new migration (usage: make makemigration msg="add snapshot table")
 makemigration:

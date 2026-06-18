@@ -1,23 +1,20 @@
 """
 CodeChunk model — stores code file chunks with pgvector embeddings.
 Populated in Phase 3 when RAG pipeline is added.
+
+Note on the embedding column:
+    Defined as Text for now. Phase 3 migration will ALTER it to vector(1536).
+    The pgvector import is NOT done at model level to keep this file
+    importable without the extension installed.
 """
 
 from datetime import datetime
 from typing import Optional
 
-from app.models.base import Base, utcnow
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-# pgvector type — safe to import; the column won't be created
-# until alembic migration runs on a postgres instance with the extension
-try:
-    from pgvector.sqlalchemy import Vector
-
-    VECTOR_AVAILABLE = True
-except ImportError:
-    VECTOR_AVAILABLE = False
+from app.models.base import Base, utcnow
 
 
 class CodeChunk(Base):
@@ -31,24 +28,19 @@ class CodeChunk(Base):
 
     # Source location
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
-    chunk_index: Mapped[int] = mapped_column(
-        Integer, nullable=False
-    )  # position within file
+    chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Content
     content: Mapped[str] = mapped_column(Text, nullable=False)
     token_count: Mapped[int] = mapped_column(Integer, default=0)
 
-    # The vector embedding (1536 dims for text-embedding-3-small)
-    # This column is added in Phase 3 migration — safe to define here now
-    if VECTOR_AVAILABLE:
-        embedding: Mapped[Optional[object]] = mapped_column(Vector(1536))
+    # Embedding stored as Text for Phase 1.
+    # Phase 3 migration: ALTER COLUMN embedding TYPE vector(1536)
+    embedding: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Metadata for retrieval context
-    language: Mapped[Optional[str]] = mapped_column(String(50))  # python, typescript…
-    chunk_type: Mapped[Optional[str]] = mapped_column(
-        String(50)
-    )  # function, class, module
+    language: Mapped[Optional[str]] = mapped_column(String(50))
+    chunk_type: Mapped[Optional[str]] = mapped_column(String(50))
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False
