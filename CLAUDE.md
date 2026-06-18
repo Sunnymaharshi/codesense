@@ -45,13 +45,13 @@
 
 ### Backend — models
 
-| File                      | Status | Notes                                                                                       |
-| ------------------------- | ------ | ------------------------------------------------------------------------------------------- |
-| `app/models/__init__.py`  | ✅     | Imports all models — required for Alembic autogenerate discovery.                           |
-| `app/models/base.py`      | ✅     | `DeclarativeBase` + `utcnow()` helper.                                                      |
-| `app/models/profile.py`   | ✅     | `Developer`, `Repo`, `IndexingJob`, `ProfileSnapshot` + `IndexStatus`, `HealthGrade` enums. |
-| `app/models/embedding.py` | ✅     | `CodeChunk` with safe pgvector import guard. Embedding col is `Text` until Phase 3.         |
-| `app/models/llm_call.py`  | ✅     | Cost tracking — model, tokens_in/out, cost_usd, duration_ms, langsmith_run_id.              |
+| File                      | Status | Notes                                                                                                                                                                                         |
+| ------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app/models/__init__.py`  | ✅     | Imports all models — required for Alembic autogenerate discovery.                                                                                                                             |
+| `app/models/base.py`      | ✅     | `DeclarativeBase` + `utcnow()` helper.                                                                                                                                                        |
+| `app/models/profile.py`   | ✅     | `Developer`, `Repo`, `IndexingJob`, `ProfileSnapshot` + `IndexStatus`, `HealthGrade` enums.                                                                                                   |
+| `app/models/embedding.py` | ✅     | `CodeChunk`. `embedding` col is plain `Text` — conditional `if VECTOR_AVAILABLE` inside class body was removed (broke SQLAlchemy declarative). Phase 3 migration ALTERs it to `vector(1536)`. |
+| `app/models/llm_call.py`  | ✅     | Cost tracking — model, tokens_in/out, cost_usd, duration_ms, langsmith_run_id.                                                                                                                |
 
 ### Backend — API
 
@@ -120,16 +120,17 @@
 
 ## Decisions made (don't revisit)
 
-| Decision                             | Reason                                                                                                                                                              |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| React + Vite, NOT Next.js            | FastAPI is the backend. No SSR needed. Next.js adds complexity with no payoff here.                                                                                 |
-| Radix UI + CSS Modules, NOT Tailwind | Full design control. CSS Modules scoped per component. Radix handles accessibility primitives.                                                                      |
-| Build SVG components manually        | No Recharts/Chart.js. Shows deeper FE skill, keeps bundle small. D3 for math only, React renders SVG.                                                               |
-| pgvector, NOT Pinecone               | Keep everything in Postgres. Simpler ops, no extra service.                                                                                                         |
-| `ai/` separate from `backend/`       | AI layer has zero FastAPI knowledge. Importable, independently testable.                                                                                            |
-| No BigQuery, No Storybook            | Out of scope. Component registry is its own design system story.                                                                                                    |
-| All libraries free & open source     | No paid tiers. Every dependency is MIT/Apache licensed.                                                                                                             |
-| `uv` NOT pip/requirements.txt        | 10–100x faster installs. `pyproject.toml` + `uv.lock` replaces `requirements.txt`. Docker builds go from minutes to seconds. Run `uv sync` locally for IDE support. |
+| Decision                                    | Reason                                                                                                                                                                                                                    |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| React + Vite, NOT Next.js                   | FastAPI is the backend. No SSR needed. Next.js adds complexity with no payoff here.                                                                                                                                       |
+| Radix UI + CSS Modules, NOT Tailwind        | Full design control. CSS Modules scoped per component. Radix handles accessibility primitives.                                                                                                                            |
+| Build SVG components manually               | No Recharts/Chart.js. Shows deeper FE skill, keeps bundle small. D3 for math only, React renders SVG.                                                                                                                     |
+| pgvector, NOT Pinecone                      | Keep everything in Postgres. Simpler ops, no extra service.                                                                                                                                                               |
+| `ai/` separate from `backend/`              | AI layer has zero FastAPI knowledge. Importable, independently testable.                                                                                                                                                  |
+| No BigQuery, No Storybook                   | Out of scope. Component registry is its own design system story.                                                                                                                                                          |
+| All libraries free & open source            | No paid tiers. Every dependency is MIT/Apache licensed.                                                                                                                                                                   |
+| `uv` NOT pip/requirements.txt               | 10–100x faster installs. `pyproject.toml` + `uv.lock` replaces `requirements.txt`. Docker builds go from minutes to seconds. Run `uv sync` locally for IDE support.                                                       |
+| No conditional columns in SQLAlchemy models | `if VECTOR_AVAILABLE: embedding = ...` inside a class body breaks SQLAlchemy declarative mapping. Always define columns unconditionally — use `Text` as placeholder, ALTER in a migration later. Fixed in `embedding.py`. |
 
 ---
 
@@ -478,14 +479,52 @@ WS   /ws/:username                   # indexing progress
 
 ## Environment variables
 
-```
-GITHUB_TOKEN=
-ANTHROPIC_API_KEY=
-OPENAI_API_KEY=
-DATABASE_URL=postgresql+asyncpg://user:pass@postgres:5432/codesense
+Full `.env` for Phase 1 development. Only `GITHUB_TOKEN` and `SECRET_KEY` are required right now — everything else can stay blank until the phase that uses it.
+
+```bash
+# ── Required now (Phase 1) ──────────────────────────────
+
+# github.com → Settings → Developer settings → Personal access tokens
+# → Tokens (classic) → Generate → scope: public_repo only. Free, 5000 req/hr.
+GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+
+# Generate locally — never reuse between projects:
+# python -c "import secrets; print(secrets.token_hex(32))"
+SECRET_KEY=your-random-64-char-hex-string
+
+# ── Local Docker services (no signup needed) ────────────
+
+DATABASE_URL=postgresql+asyncpg://codesense:codesense@postgres:5432/codesense
 REDIS_URL=redis://redis:6379/0
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/1
+
+# ── App ─────────────────────────────────────────────────
+
+ENVIRONMENT=development
+CORS_ORIGINS=http://localhost:5173
+
+# ── Phase 3 — AI (leave blank until then) ───────────────
+
+# console.anthropic.com → API Keys → Create. Pay-per-token, no monthly fee.
+# Dev spend: ~$2–5 total while building.
+ANTHROPIC_API_KEY=
+
+# platform.openai.com → API Keys → Create.
+# Used ONLY for text-embedding-3-small. ~$0.02 per million tokens.
+OPENAI_API_KEY=
+
+# smith.langchain.com → Sign up (free) → Settings → API Keys.
+# Free tier: unlimited traces for personal projects.
+LANGCHAIN_TRACING_V2=false
 LANGCHAIN_API_KEY=
 LANGCHAIN_PROJECT=codesense
+
+# ── Production only (leave blank in dev) ────────────────
+
+# sentry.io → Sign up (free, 5000 errors/month) → New Project
+# → FastAPI → copy DSN. Create second project for React.
+# Only initialises when ENVIRONMENT=production AND DSN is set.
 SENTRY_DSN_BACKEND=
 SENTRY_DSN_FRONTEND=
 ```
