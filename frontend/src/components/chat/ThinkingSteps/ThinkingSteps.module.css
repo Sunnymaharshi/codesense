@@ -1,0 +1,48 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-muted);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-muted);
+  margin-bottom: var(--space-3);
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.iconDone {
+  color: var(--color-grade-a);
+}
+
+.iconPending {
+  color: var(--color-fg-subtle);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.text {
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+}
+
+.textDone {
+  color: var(--color-fg-subtle);
+}
+
+.textPending {
+  color: var(--color-fg-muted);
+}

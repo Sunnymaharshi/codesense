@@ -10,7 +10,6 @@ import enum
 from datetime import datetime
 from typing import Optional
 
-from app.models.base import Base, utcnow
 from sqlalchemy import (
     JSON,
     BigInteger,
@@ -23,6 +22,8 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.models.base import Base, utcnow
 
 # ─────────────────────────────────────────
 # Enums
@@ -65,15 +66,13 @@ class Developer(Base):
     followers: Mapped[Optional[int]] = mapped_column(Integer)
     following: Mapped[Optional[int]] = mapped_column(Integer)
     public_repos: Mapped[Optional[int]] = mapped_column(Integer)
-    github_joined_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True)
-    )
+    github_joined_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    peak_commit_day: Mapped[Optional[str]] = mapped_column(String(50))
+    commit_frequency_per_week: Mapped[Optional[float]] = mapped_column(Integer)
 
     # AI-generated fields (populated by LangGraph agent in Phase 4)
     ai_persona: Mapped[Optional[str]] = mapped_column(Text)  # the generated paragraph
-    skill_scores: Mapped[Optional[dict]] = mapped_column(
-        JSON
-    )  # { backend: 88, frontend: 62, ... }
+    skill_scores: Mapped[Optional[dict]] = mapped_column(JSON)  # { backend: 88, frontend: 62, ... }
 
     # Indexing state
     index_status: Mapped[IndexStatus] = mapped_column(
@@ -150,12 +149,8 @@ class Repo(Base):
 
     # Dates
     last_commit_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-    github_created_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True)
-    )
-    github_pushed_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True)
-    )
+    github_created_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    github_pushed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
     # Health signals (detected by health_score.py)
     has_readme: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -167,14 +162,10 @@ class Repo(Base):
 
     # Computed health (by health_score.py)
     health_score: Mapped[Optional[int]] = mapped_column(Integer)  # 0–100
-    health_grade: Mapped[Optional[HealthGrade]] = mapped_column(
-        Enum(HealthGrade)
-    )  # A/B/C
+    health_grade: Mapped[Optional[HealthGrade]] = mapped_column(Enum(HealthGrade))  # A/B/C
 
     # Topics / tags from GitHub
-    topics: Mapped[Optional[list]] = mapped_column(
-        JSON
-    )  # ["fastapi", "python", "docker"]
+    topics: Mapped[Optional[list]] = mapped_column(JSON)  # ["fastapi", "python", "docker"]
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -211,9 +202,7 @@ class IndexingJob(Base):
         index=True,
     )
 
-    status: Mapped[IndexStatus] = mapped_column(
-        Enum(IndexStatus), default=IndexStatus.pending
-    )
+    status: Mapped[IndexStatus] = mapped_column(Enum(IndexStatus), default=IndexStatus.pending)
     repos_total: Mapped[int] = mapped_column(Integer, default=0)
     repos_done: Mapped[int] = mapped_column(Integer, default=0)
     error_message: Mapped[Optional[str]] = mapped_column(Text)
@@ -226,9 +215,7 @@ class IndexingJob(Base):
     )
 
     # Relationships
-    developer: Mapped["Developer"] = relationship(
-        "Developer", back_populates="indexing_jobs"
-    )
+    developer: Mapped["Developer"] = relationship("Developer", back_populates="indexing_jobs")
 
     def __repr__(self) -> str:
         return f"<IndexingJob dev={self.developer_id} {self.repos_done}/{self.repos_total} [{self.status}]>"
@@ -259,9 +246,7 @@ class ProfileSnapshot(Base):
     )
 
     # Relationships
-    developer: Mapped["Developer"] = relationship(
-        "Developer", back_populates="snapshots"
-    )
+    developer: Mapped["Developer"] = relationship("Developer", back_populates="snapshots")
 
     def __repr__(self) -> str:
         return f"<ProfileSnapshot dev={self.developer_id} at={self.taken_at}>"

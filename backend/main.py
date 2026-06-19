@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import analyze, profile
+from app.api.routes import query as query_routes
 from app.api.routes import ws as ws_routes
 from app.core.config import settings
 
@@ -43,6 +44,7 @@ app.add_middleware(
 app.include_router(analyze.router, prefix="/api", tags=["analyze"])
 app.include_router(profile.router, prefix="/api", tags=["profile"])
 app.include_router(ws_routes.router)
+app.include_router(query_routes.router, prefix="/api")
 
 
 # ── Health check ─────────────────────────────────────────

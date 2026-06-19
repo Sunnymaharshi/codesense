@@ -10,7 +10,6 @@ dependencies = [
     "uvicorn[standard]==0.37.0",
     "python-dotenv==1.1.1",
     "httpx==0.28.1",
-
     # Database
     "sqlalchemy[asyncio]==2.0.43",
     "alembic==1.16.5",
@@ -18,23 +17,20 @@ dependencies = [
     "psycopg2-binary==2.9.10",
     "pgvector==0.4.1",
     "greenlet==3.2.4",
-
     # Validation & Settings
     "pydantic==2.11.9",
     "pydantic-settings==2.11.0",
-
     # Background Workers
     "celery==5.5.3",
     "redis==6.4.0",
-
     # AI
     "anthropic==0.72.0",
     "openai==1.109.1",
     "langgraph==0.6.10",
     "langsmith==0.4.28",
-
     # Observability
     "sentry-sdk[fastapi]==2.37.1",
+    "fastembed>=0.8.0",
 ]
 
 [dependency-groups]

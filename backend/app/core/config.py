@@ -22,9 +22,7 @@ class Settings(BaseSettings):
     # GitHub
     GITHUB_TOKEN: str
 
-    # Anthropic
-    ANTHROPIC_API_KEY: str
-
+    GROQ_API_KEY: str
     # OpenAI (embeddings)
     OPENAI_API_KEY: str
 

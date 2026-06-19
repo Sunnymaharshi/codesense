@@ -1,0 +1,22 @@
+.btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--color-accent-muted);
+  border: 1px solid rgba(63, 185, 80, 0.3);
+  border-radius: var(--radius-full);
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: background var(--duration-fast), border-color var(--duration-fast);
+}
+.btn:hover {
+  background: rgba(63, 185, 80, 0.2);
+  border-color: rgba(63, 185, 80, 0.5);
+}
+.btnActive {
+  background: rgba(63, 185, 80, 0.2);
+  border-color: var(--color-accent);
+}

@@ -9,6 +9,8 @@ Usage:
 """
 
 import asyncio
+import base64
+import os
 from typing import Any
 
 import httpx
@@ -247,5 +249,92 @@ class GitHubClient:
                     if e.response.status_code != 404:
                         break
                     continue
+
+        return results
+
+    def get_repo_files_sync(
+        self,
+        owner: str,
+        repo: str,
+        extensions: set[str],
+        skip_paths: set[str],
+        max_files: int,
+    ) -> list[tuple[str, str, str]]:
+        """
+        Returns list of (file_path, content, language) tuples.
+        Language is inferred from extension.
+        """
+        EXT_TO_LANG = {
+            ".py": "Python",
+            ".js": "JavaScript",
+            ".ts": "TypeScript",
+            ".tsx": "TypeScript",
+            ".jsx": "JavaScript",
+            ".go": "Go",
+            ".rs": "Rust",
+            ".java": "Java",
+            ".rb": "Ruby",
+            ".php": "PHP",
+            ".cs": "C#",
+            ".cpp": "C++",
+            ".c": "C",
+            ".swift": "Swift",
+            ".kt": "Kotlin",
+            ".sh": "Shell",
+            ".yaml": "YAML",
+            ".yml": "YAML",
+            ".toml": "TOML",
+        }
+
+        try:
+            tree = self._get_sync(
+                f"/repos/{owner}/{repo}/git/trees/HEAD",
+                params={"recursive": "1"},
+                timeout=30,
+            ).get("tree", [])
+        except httpx.HTTPStatusError:
+            return []
+
+        results: list[tuple[str, str, str]] = []
+        candidates: list[tuple[str, str]] = []
+
+        for item in tree:
+            if item.get("type") != "blob":
+                continue
+
+            path = item["path"]
+
+            if any(part in skip_paths for part in path.split("/")):
+                continue
+
+            ext = os.path.splitext(path)[1].lower()
+            if ext not in extensions:
+                continue
+
+            candidates.append((path, ext))
+            if len(candidates) >= max_files:
+                break
+
+        for path, ext in candidates:
+            try:
+                item = self._get_sync(
+                    f"/repos/{owner}/{repo}/contents/{path}",
+                    timeout=30,
+                )
+            except httpx.HTTPStatusError:
+                continue
+
+            if item.get("encoding") != "base64":
+                continue
+
+            try:
+                content = base64.b64decode(item["content"]).decode(
+                    "utf-8",
+                    errors="replace",
+                )
+            except Exception:
+                continue
+
+            results.append((path, content, EXT_TO_LANG.get(ext, "text")))
 
         return results
