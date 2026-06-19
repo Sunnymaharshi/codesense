@@ -1,70 +1,56 @@
-/* ─────────────────────────────────────────
-   codesense — Design Tokens
-   All CSS custom properties live here.
-   Import this in global.css only.
-   Never import directly in components.
-───────────────────────────────────────── */
-
+/* ─── Typography ──────────────────────────────────────────── */
 :root {
-  /* ── Typography ── */
-  --font-sans:
-    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
 
-  --font-size-xs: 11px;
-  --font-size-sm: 12px;
-  --font-size-base: 13px;
-  --font-size-md: 14px;
-  --font-size-lg: 16px;
-  --font-size-xl: 20px;
-  --font-size-2xl: 24px;
-  --font-size-3xl: 30px;
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 1.875rem;  /* 30px */
+  --text-4xl: 2.25rem;   /* 36px */
 
-  --font-weight-normal: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
 
-  --line-height-tight: 1.3;
-  --line-height-normal: 1.6;
-  --line-height-loose: 1.8;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
 
-  --letter-spacing-tight: -0.01em;
-  --letter-spacing-normal: 0;
-  --letter-spacing-wide: 0.06em;
-  --letter-spacing-wider: 0.1em;
+  /* ─── Spacing ───────────────────────────────────────────── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
 
-  /* ── Spacing ── */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-10: 40px;
-  --space-12: 48px;
-  --space-16: 64px;
-
-  /* ── Border radius ── */
+  /* ─── Border radius ─────────────────────────────────────── */
   --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
-  --radius-xl: 14px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
   --radius-full: 9999px;
 
-  /* ── Shadows ── */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06);
-  --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
+  /* ─── Shadows ───────────────────────────────────────────── */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 
-  /* ── Transitions ── */
-  --transition-fast: 100ms ease;
-  --transition-base: 160ms ease;
-  --transition-slow: 240ms ease;
-  --transition-layout: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* ── Z-index scale ── */
+  /* ─── Z-index ───────────────────────────────────────────── */
   --z-base: 0;
   --z-raised: 10;
   --z-dropdown: 100;
@@ -73,177 +59,76 @@
   --z-modal: 400;
   --z-toast: 500;
 
-  /* ────────────────────────────────────
-     LIGHT MODE COLORS
-  ──────────────────────────────────── */
-
-  /* Backgrounds */
-  --color-bg-base: #ffffff;
-  --color-bg-subtle: #f7f7f6;
-  --color-bg-raised: #f0efed;
-  --color-bg-overlay: #e8e7e4;
-
-  /* Borders */
-  --color-border-subtle: #e8e7e4;
-  --color-border-default: #d4d3cf;
-  --color-border-strong: #b0afab;
-
-  /* Text */
-  --color-text-primary: #1a1a18;
-  --color-text-secondary: #4a4a46;
-  --color-text-tertiary: #7a7a76;
-  --color-text-disabled: #b0afab;
-  --color-text-inverse: #ffffff;
-
-  /* Brand — purple (primary action, AI components) */
-  --color-brand-50: #f0effe;
-  --color-brand-100: #e4e2fd;
-  --color-brand-200: #ccc9fa;
-  --color-brand-300: #aba5f5;
-  --color-brand-400: #8880ee;
-  --color-brand-500: #6b63e6; /* primary */
-  --color-brand-600: #534ab7; /* hover */
-  --color-brand-700: #3d3589;
-  --color-brand-800: #2a245e;
-  --color-brand-900: #1a1639;
-
-  /* Teal — success, backend, health A */
-  --color-teal-50: #e8faf4;
-  --color-teal-100: #c8f2e3;
-  --color-teal-200: #9fe1cb;
-  --color-teal-300: #5dcaa5;
-  --color-teal-400: #1d9e75; /* primary teal */
-  --color-teal-500: #157a5a;
-  --color-teal-600: #085041;
-
-  /* Amber — warning, AI layer, health B */
-  --color-amber-50: #fef8ec;
-  --color-amber-100: #fdedc8;
-  --color-amber-200: #fad694;
-  --color-amber-300: #f5b84a;
-  --color-amber-400: #ef9f27; /* primary amber */
-  --color-amber-500: #c97d12;
-  --color-amber-600: #633806;
-
-  /* Red — error, danger, health C */
-  --color-red-50: #fef0f0;
-  --color-red-100: #fddcdc;
-  --color-red-200: #f9b0b0;
-  --color-red-300: #f37878;
-  --color-red-400: #e84444;
-  --color-red-500: #c42424;
-  --color-red-600: #791f1f;
-
-  /* Semantic aliases — use these in components */
-  --color-success-bg: var(--color-teal-50);
-  --color-success-border: var(--color-teal-200);
-  --color-success-text: var(--color-teal-600);
-  --color-success-icon: var(--color-teal-400);
-
-  --color-warning-bg: var(--color-amber-50);
-  --color-warning-border: var(--color-amber-200);
-  --color-warning-text: var(--color-amber-600);
-  --color-warning-icon: var(--color-amber-400);
-
-  --color-danger-bg: var(--color-red-50);
-  --color-danger-border: var(--color-red-200);
-  --color-danger-text: var(--color-red-600);
-  --color-danger-icon: var(--color-red-400);
-
-  --color-info-bg: var(--color-brand-50);
-  --color-info-border: var(--color-brand-200);
-  --color-info-text: var(--color-brand-700);
-  --color-info-icon: var(--color-brand-500);
-
-  /* Health grades */
-  --color-grade-a-bg: var(--color-teal-50);
-  --color-grade-a-border: var(--color-teal-300);
-  --color-grade-a-text: var(--color-teal-600);
-
-  --color-grade-b-bg: var(--color-amber-50);
-  --color-grade-b-border: var(--color-amber-300);
-  --color-grade-b-text: var(--color-amber-600);
-
-  --color-grade-c-bg: var(--color-bg-subtle);
-  --color-grade-c-border: var(--color-border-default);
-  --color-grade-c-text: var(--color-text-tertiary);
-
-  /* Heatmap cells */
-  --color-heatmap-0: var(--color-bg-raised);
-  --color-heatmap-1: var(--color-teal-100);
-  --color-heatmap-2: var(--color-teal-200);
-  --color-heatmap-3: var(--color-teal-300);
-  --color-heatmap-4: var(--color-teal-400);
-  --color-heatmap-5: var(--color-teal-600);
+  /* ─── Transitions ───────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0.0, 0.2, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 350ms;
 }
 
-/* ────────────────────────────────────
-   DARK MODE COLORS
-   Automatically applied via prefers-color-scheme.
-   All tokens above are overridden here.
-──────────────────────────────────── */
-@media (prefers-color-scheme: dark) {
+/* ─── Light mode ─────────────────────────────────────────── */
+:root {
+  --color-bg: #0d1117;
+  --color-bg-subtle: #161b22;
+  --color-bg-muted: #1c2128;
+  --color-bg-emphasis: #21262d;
+
+  --color-border: #30363d;
+  --color-border-muted: #21262d;
+  --color-border-subtle: #1c2128;
+
+  --color-fg: #e6edf3;
+  --color-fg-muted: #8b949e;
+  --color-fg-subtle: #6e7681;
+  --color-fg-onEmphasis: #ffffff;
+
+  /* Brand — electric teal */
+  --color-accent: #3fb950;
+  --color-accent-muted: rgba(63, 185, 80, 0.15);
+  --color-accent-emphasis: #2ea043;
+
+  /* Health grades */
+  --color-grade-a: #3fb950;
+  --color-grade-a-bg: rgba(63, 185, 80, 0.12);
+  --color-grade-b: #e3b341;
+  --color-grade-b-bg: rgba(227, 179, 65, 0.12);
+  --color-grade-c: #6e7681;
+  --color-grade-c-bg: rgba(110, 118, 129, 0.12);
+  --color-grade-d: #f85149;
+  --color-grade-d-bg: rgba(248, 81, 73, 0.12);
+
+  /* Semantic */
+  --color-success: #3fb950;
+  --color-warning: #e3b341;
+  --color-danger: #f85149;
+  --color-info: #58a6ff;
+
+  /* Language colors */
+  --color-lang-typescript: #3178c6;
+  --color-lang-javascript: #f7df1e;
+  --color-lang-python: #3572a5;
+  --color-lang-rust: #dea584;
+  --color-lang-go: #00add8;
+  --color-lang-java: #b07219;
+  --color-lang-css: #563d7c;
+  --color-lang-html: #e34c26;
+  --color-lang-shell: #89e051;
+  --color-lang-default: #8b949e;
+
+  /* Heatmap cells (commit activity) */
+  --color-heatmap-0: #161b22;
+  --color-heatmap-1: #0e4429;
+  --color-heatmap-2: #006d32;
+  --color-heatmap-3: #26a641;
+  --color-heatmap-4: #39d353;
+}
+
+/* ─── Reduced motion ─────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
   :root {
-    /* Backgrounds */
-    --color-bg-base: #111110;
-    --color-bg-subtle: #1a1a18;
-    --color-bg-raised: #222220;
-    --color-bg-overlay: #2c2c2a;
-
-    /* Borders */
-    --color-border-subtle: #2c2c2a;
-    --color-border-default: #3a3a38;
-    --color-border-strong: #52524e;
-
-    /* Text */
-    --color-text-primary: #eeede9;
-    --color-text-secondary: #b5b3ac;
-    --color-text-tertiary: #78776f;
-    --color-text-disabled: #52524e;
-    --color-text-inverse: #111110;
-
-    /* Shadows (less visible on dark) */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-    --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.6);
-
-    /* Semantic aliases — dark overrides */
-    --color-success-bg: #04342c;
-    --color-success-border: #0f6e56;
-    --color-success-text: #9fe1cb;
-
-    --color-warning-bg: #412402;
-    --color-warning-border: #7a4510;
-    --color-warning-text: #fac775;
-
-    --color-danger-bg: #501313;
-    --color-danger-border: #7a2020;
-    --color-danger-text: #f7c1c1;
-
-    --color-info-bg: #1e1a4a;
-    --color-info-border: #3d3589;
-    --color-info-text: #cecbf6;
-
-    /* Health grades — dark */
-    --color-grade-a-bg: #04342c;
-    --color-grade-a-border: #0f6e56;
-    --color-grade-a-text: #9fe1cb;
-
-    --color-grade-b-bg: #412402;
-    --color-grade-b-border: #7a4510;
-    --color-grade-b-text: #fac775;
-
-    --color-grade-c-bg: var(--color-bg-subtle);
-    --color-grade-c-border: var(--color-border-default);
-    --color-grade-c-text: var(--color-text-tertiary);
-
-    /* Heatmap cells — dark */
-    --color-heatmap-0: var(--color-bg-overlay);
-    --color-heatmap-1: #04342c;
-    --color-heatmap-2: #0a5c44;
-    --color-heatmap-3: #157a5a;
-    --color-heatmap-4: #1d9e75;
-    --color-heatmap-5: #5dcaa5;
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
   }
 }
