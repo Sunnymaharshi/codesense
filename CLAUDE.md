@@ -123,25 +123,26 @@
 
 ## Decisions made (don't revisit)
 
-| Decision                                    | Reason                                                                                                                                                                                                                            |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| React + Vite, NOT Next.js                   | FastAPI is the backend. No SSR needed. Next.js adds complexity with no payoff here.                                                                                                                                               |
-| Radix UI + CSS Modules, NOT Tailwind        | Full design control. CSS Modules scoped per component. Radix handles accessibility primitives.                                                                                                                                    |
-| Build SVG components manually               | No Recharts/Chart.js. Shows deeper FE skill, keeps bundle small. D3 for math only, React renders SVG.                                                                                                                             |
-| pgvector, NOT Pinecone                      | Keep everything in Postgres. Simpler ops, no extra service.                                                                                                                                                                       |
-| `ai/` separate from `backend/`              | AI layer has zero FastAPI knowledge. Importable, independently testable.                                                                                                                                                          |
-| No BigQuery, No Storybook                   | Out of scope. Component registry is its own design system story.                                                                                                                                                                  |
-| All libraries free & open source            | No paid tiers. Every dependency is MIT/Apache licensed.                                                                                                                                                                           |
-| `uv` NOT pip/requirements.txt               | 10–100x faster installs. `pyproject.toml` + `uv.lock` replaces `requirements.txt`. Docker builds go from minutes to seconds. Run `uv sync` locally for IDE support.                                                               |
-| No conditional columns in SQLAlchemy models | `if VECTOR_AVAILABLE: embedding = ...` inside a class body breaks SQLAlchemy declarative mapping. Always define columns unconditionally — use `Text` as placeholder, ALTER in a migration later. Fixed in `embedding.py`.         |
-| No tests until project is done              | Skipping vitest and @testing-library/react until all phases are built. Tests will be added at the end.                                                                                                                            |
-| `fastembed` NOT OpenAI for embeddings       | Runs locally on M4 CPU (~200MB RAM, ~0.5s/100 chunks). Free, no API key, no data leaving the machine. `BAAI/bge-small-en-v1.5` produces 384-dim vectors — excellent for code similarity. Removes OpenAI as a dependency entirely. |
+| Decision                                    | Reason                                                                                                                                                                                                                                                               |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| React + Vite, NOT Next.js                   | FastAPI is the backend. No SSR needed. Next.js adds complexity with no payoff here.                                                                                                                                                                                  |
+| Radix UI + CSS Modules, NOT Tailwind        | Full design control. CSS Modules scoped per component. Radix handles accessibility primitives.                                                                                                                                                                       |
+| Build SVG components manually               | No Recharts/Chart.js. Shows deeper FE skill, keeps bundle small. D3 for math only, React renders SVG.                                                                                                                                                                |
+| pgvector, NOT Pinecone                      | Keep everything in Postgres. Simpler ops, no extra service.                                                                                                                                                                                                          |
+| `ai/` separate from `backend/`              | AI layer has zero FastAPI knowledge. Importable, independently testable.                                                                                                                                                                                             |
+| No BigQuery, No Storybook                   | Out of scope. Component registry is its own design system story.                                                                                                                                                                                                     |
+| All libraries free & open source            | No paid tiers. Every dependency is MIT/Apache licensed.                                                                                                                                                                                                              |
+| `uv` NOT pip/requirements.txt               | 10–100x faster installs. `pyproject.toml` + `uv.lock` replaces `requirements.txt`. Docker builds go from minutes to seconds. Run `uv sync` locally for IDE support.                                                                                                  |
+| No conditional columns in SQLAlchemy models | `if VECTOR_AVAILABLE: embedding = ...` inside a class body breaks SQLAlchemy declarative mapping. Always define columns unconditionally — use `Text` as placeholder, ALTER in a migration later. Fixed in `embedding.py`.                                            |
+| No tests until project is done              | Skipping vitest and @testing-library/react until all phases are built. Tests will be added at the end.                                                                                                                                                               |
+| `fastembed` NOT OpenAI for embeddings       | Runs locally on M4 CPU (~200MB RAM, ~0.5s/100 chunks). Free, no API key, no data leaving the machine. `BAAI/bge-small-en-v1.5` produces 384-dim vectors — excellent for code similarity. Removes OpenAI as a dependency entirely.                                    |
+| Groq NOT Anthropic/OpenAI for generation    | Free tier: 14,400 req/day, 6000 tokens/min. `llama-3.3-70b-versatile` is genuinely capable at code reasoning. OpenAI-compatible API — one line to swap to any other provider later. LPU inference is 10x faster than GPU, streaming feels instant. Zero cost in dev. |
 
 ---
 
 ## What makes it technically interesting
 
-1. **AI decides what UI to render.** Claude returns structured JSON `{ type, text, data }`. The React frontend maps `type` to a component registry and renders it inline in the chat — like Claude.ai renders artifacts. The AI drives the UI, not the user.
+1. **AI decides what UI to render.** The LLM (Groq `llama-3.3-70b`) returns structured JSON `{ type, text, data }`. The React frontend maps `type` to a component registry and renders it inline in the chat — like Claude.ai renders artifacts. The AI drives the UI, not the user.
 2. **RAG on real code.** Code files are chunked by function, embedded locally via `fastembed` (`BAAI/bge-small-en-v1.5`, runs on M4 CPU, free), stored in pgvector. The assistant retrieves relevant chunks and cites them in answers.
 3. **LangGraph analysis agent.** A multi-step agent with tools (GitHub API, code analyser) runs async via Celery, computing repo health scores, developer persona, and growth trajectory.
 4. **Real-time via WebSocket.** Indexing progress pushed live. Frontend applies optimistic UI — profile skeleton renders immediately, data fills in as the agent completes.
@@ -158,18 +159,18 @@
 
 ### Backend
 
-| Layer           | Tech                                                                                                                  |
-| --------------- | --------------------------------------------------------------------------------------------------------------------- |
-| API             | FastAPI, Pydantic v2                                                                                                  |
-| ORM             | SQLAlchemy 2.x (async) + Alembic                                                                                      |
-| Workers         | Celery + Redis broker                                                                                                 |
-| AI / RAG        | Anthropic API (`claude-sonnet-4-6`), LangGraph, LangSmith                                                             |
-| Embeddings      | `fastembed` — runs locally, no API key, no cost. Model: `BAAI/bge-small-en-v1.5` (130MB, 384-dim, CPU-friendly on M4) |
-| Database        | PostgreSQL 16 + pgvector extension                                                                                    |
-| Cache / Queue   | Redis                                                                                                                 |
-| Package manager | `uv` — replaces pip. 10–100x faster installs, lockfile via `uv.lock`, no `requirements.txt`                           |
-| Observability   | Sentry, LangSmith traces, structured JSON logs                                                                        |
-| Infra           | Docker + Docker Compose, GitHub Actions CI/CD                                                                         |
+| Layer           | Tech                                                                                                                       |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| API             | FastAPI, Pydantic v2                                                                                                       |
+| ORM             | SQLAlchemy 2.x (async) + Alembic                                                                                           |
+| Workers         | Celery + Redis broker                                                                                                      |
+| AI / RAG        | Groq API (`llama-3.3-70b-versatile`) — free tier, OpenAI-compatible, 10x faster than GPU inference. LangSmith for tracing. |
+| Embeddings      | `fastembed` — runs locally, no API key, no cost. Model: `BAAI/bge-small-en-v1.5` (130MB, 384-dim, CPU-friendly on M4)      |
+| Database        | PostgreSQL 16 + pgvector extension                                                                                         |
+| Cache / Queue   | Redis                                                                                                                      |
+| Package manager | `uv` — replaces pip. 10–100x faster installs, lockfile via `uv.lock`, no `requirements.txt`                                |
+| Observability   | Sentry, LangSmith traces, structured JSON logs                                                                             |
+| Infra           | Docker + Docker Compose, GitHub Actions CI/CD                                                                              |
 
 ### Frontend — complete library list (all free & open source)
 
@@ -508,9 +509,10 @@ CORS_ORIGINS=http://localhost:5173
 
 # ── Phase 3 — AI (leave blank until then) ───────────────
 
-# console.anthropic.com → API Keys → Create. Pay-per-token, no monthly fee.
-# Dev spend: ~$2–5 total while building.
-ANTHROPIC_API_KEY=
+# console.groq.com → Sign up free → API Keys → Create.
+# Free tier: 14,400 req/day, 6000 tokens/min. No credit card needed.
+# Model: llama-3.3-70b-versatile
+GROQ_API_KEY=
 
 # No OpenAI key needed — embeddings run locally via fastembed (BAAI/bge-small-en-v1.5).
 # Model downloads once (~130MB) to ~/.cache/fastembed/ on first worker start.
@@ -616,6 +618,28 @@ volumes:
   fastembed_cache:
 ```
 
+### Generation model decision (locked)
+
+**Groq, not Anthropic or OpenAI.** Free tier is real and sufficient.
+
+|                    | Groq (chosen)           | Anthropic Claude  | OpenAI GPT-4o |
+| ------------------ | ----------------------- | ----------------- | ------------- |
+| Cost               | Free (14.4k req/day)    | Pay-per-token     | Pay-per-token |
+| Model              | llama-3.3-70b-versatile | claude-sonnet-4-6 | gpt-4o        |
+| API style          | OpenAI-compatible ✅    | Custom SDK        | OpenAI        |
+| Speed              | 🏆 LPU, ~10x faster     | Fast              | Fast          |
+| Code reasoning     | Strong                  | Excellent         | Excellent     |
+| Swap to paid later | 1 line change           | SDK change        | 1 line change |
+
+```python
+from openai import OpenAI  # same package, different base_url
+
+client = OpenAI(
+    api_key=settings.GROQ_API_KEY,
+    base_url="https://api.groq.com/openai/v1",
+)
+```
+
 ### What to build
 
 **`ai/` directory** (separate from `backend/` — zero FastAPI knowledge):
@@ -636,7 +660,7 @@ ai/
 │   ├── chunker.py          # split code files by function/class boundary
 │   ├── embedder.py         # fastembed BAAI/bge-small-en-v1.5 — local, free
 │   └── retriever.py        # pgvector cosine similarity search (vector(384))
-└── cost_tracker.py         # save LLMCall rows (Anthropic only — no OpenAI)
+└── cost_tracker.py         # no-op in dev (Groq is free); logs token usage only
 ```
 
 **Backend additions:**
