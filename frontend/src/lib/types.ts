@@ -1,5 +1,5 @@
 /* ─── Enums ──────────────────────────────────────────────── */
-export type IndexStatus = "pending" | "running" | "done" | "error";
+export type IndexStatus = "idle" | "pending" | "running" | "done" | "error";
 export type HealthGrade = "A" | "B" | "C" | "D" | "F";
 
 /* ─── Developer / Repo ───────────────────────────────────── */
@@ -14,7 +14,6 @@ export interface DeveloperResponse {
   index_status: IndexStatus;
   indexed_at: string | null;
   created_at: string;
-  // contribution fields
   peak_commit_day: string | null;
   commit_frequency_per_week: number | null;
   total_commits: number | null;
@@ -73,15 +72,16 @@ export interface AnalyzeResponse {
   message: string;
 }
 
-/* ─── WebSocket ──────────────────────────────────────────── */
+/* ─── WebSocket progress ─────────────────────────────────── */
 export interface WsProgressMessage {
-  type: "progress" | "done" | "error";
+  type: "started" | "progress" | "done" | "error";
   repos_done: number;
   repos_total: number;
+  repo?: string;
   message?: string;
 }
 
-/* ─── AI streaming component types ──────────────────────────*/
+/* ─── AI streaming ───────────────────────────────────────── */
 export type ComponentType =
   | "commit_heatmap"
   | "skill_radar"

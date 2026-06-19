@@ -1,6 +1,11 @@
+/**
+ * Phase 2 profile store — adds "idle" status + error field
+ * compared to Phase 1 version.
+ */
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
-import type { IndexStatus } from "@/lib/types";
+
+export type IndexStatus = "idle" | "pending" | "running" | "done" | "error";
 
 interface ProfileState {
   username: string | null;
@@ -22,7 +27,7 @@ interface ProfileActions {
 
 const initialState: ProfileState = {
   username: null,
-  indexStatus: "idle" as IndexStatus,
+  indexStatus: "idle",
   reposDone: 0,
   reposTotal: 0,
   jobId: null,
@@ -34,34 +39,20 @@ export const useProfileStore = create<ProfileState & ProfileActions>()(
     ...initialState,
 
     setUsername: (username) =>
-      set((state) => {
-        state.username = username;
-      }),
+      set((s) => { s.username = username; }),
 
     setIndexStatus: (status) =>
-      set((state) => {
-        state.indexStatus = status;
-      }),
+      set((s) => { s.indexStatus = status; }),
 
     setProgress: (done, total) =>
-      set((state) => {
-        state.reposDone = done;
-        state.reposTotal = total;
-      }),
+      set((s) => { s.reposDone = done; s.reposTotal = total; }),
 
     setJobId: (jobId) =>
-      set((state) => {
-        state.jobId = jobId;
-      }),
+      set((s) => { s.jobId = jobId; }),
 
     setError: (error) =>
-      set((state) => {
-        state.error = error;
-      }),
+      set((s) => { s.error = error; }),
 
-    reset: () =>
-      set((state) => {
-        Object.assign(state, initialState);
-      }),
+    reset: () => set((s) => { Object.assign(s, initialState); }),
   })),
 );

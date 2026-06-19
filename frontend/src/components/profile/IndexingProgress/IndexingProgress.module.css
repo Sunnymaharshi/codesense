@@ -1,0 +1,88 @@
+.banner {
+  overflow: hidden;
+  margin-bottom: var(--space-4);
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border-muted);
+  border-radius: var(--radius-lg);
+  border-left: 3px solid var(--color-accent);
+}
+
+.bannerDone .inner {
+  border-left-color: var(--color-grade-a);
+}
+
+.iconWrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.iconSpinner {
+  color: var(--color-accent);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.iconDone {
+  color: var(--color-grade-a);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--color-fg-muted);
+}
+
+.label strong {
+  color: var(--color-fg);
+  font-weight: var(--font-semibold);
+}
+
+.doneLabel {
+  color: var(--color-grade-a);
+  font-weight: var(--font-medium);
+}
+
+.barTrack {
+  width: 120px;
+  height: 4px;
+  background: var(--color-bg-muted);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.barFill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: var(--radius-full);
+}
+
+.pct {
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--color-fg-subtle);
+  flex-shrink: 0;
+  width: 32px;
+  text-align: right;
+}
+
+@media (max-width: 480px) {
+  .barTrack {
+    display: none;
+  }
+  .pct {
+    display: none;
+  }
+}

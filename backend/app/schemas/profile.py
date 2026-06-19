@@ -8,6 +8,8 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from app.models.profile import HealthGrade, IndexStatus
+
 # ── Request ───────────────────────────────────────────────
 
 
@@ -62,7 +64,7 @@ class RepoResponse(BaseModel):
     has_docker: bool
     has_license: bool
     health_score: Optional[int]
-    health_grade: Optional[str]
+    health_grade: HealthGrade
     topics: Optional[list]
     is_fork: bool
     is_archived: bool
@@ -82,6 +84,7 @@ class AnalyzeResponse(BaseModel):
     developer_id: int
     job_id: int
     github_username: str
+    status: IndexStatus
     message: str
 
 

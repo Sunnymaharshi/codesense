@@ -5,11 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { getProfile } from "@/lib/api";
 import { useProfileStore } from "@/store/profileStore";
+import { useIndexingProgress } from "@/hooks/useIndexingProgress";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { StatsRow } from "@/components/profile/StatsRow";
 import { LanguageBars } from "@/components/profile/LanguageBars";
 import { RepoGrid } from "@/components/profile/RepoGrid";
 import { ContributionStats } from "@/components/profile/ContributionStats";
+import { IndexingProgress } from "@/components/profile/IndexingProgress";
 import {
   ProfileHeaderSkeleton,
   StatsRowSkeleton,
@@ -19,7 +21,7 @@ import styles from "./Profile.module.css";
 
 export function Profile() {
   const { username } = useParams({ from: "/u/$username" });
-  const { setUsername } = useProfileStore();
+  const { setUsername, indexStatus } = useProfileStore();
 
   useEffect(() => {
     setUsername(username);
@@ -35,17 +37,29 @@ export function Profile() {
     queryKey: ["profile", username],
     queryFn: () => getProfile(username),
     retry: 2,
+    // While indexing, poll every 3s as a fallback even without WS
+    refetchInterval: indexStatus === "running" ? 3000 : false,
   });
+
+  // Connect WebSocket — drives store progress + triggers refetch on done
+  useIndexingProgress(username, {
+    onDone: () => {
+      // Small delay so Postgres has committed before we fetch
+      setTimeout(() => refetch(), 500);
+    },
+  });
+
+  const showSkeleton = isLoading && !data;
+  const showProfile = !!data;
 
   return (
     <div className={styles.page}>
-      {/* Nav bar */}
+      {/* Nav */}
       <nav className={styles.nav}>
         <Link to="/" className={styles.backLink}>
           <ArrowLeft size={16} />
           codesense
         </Link>
-
         {data && (
           <a
             href={`https://github.com/${username}`}
@@ -59,8 +73,11 @@ export function Profile() {
       </nav>
 
       <div className={styles.container}>
+        {/* Live indexing progress banner */}
+        <IndexingProgress />
+
         <AnimatePresence mode="wait">
-          {isLoading && (
+          {showSkeleton && (
             <motion.div
               key="skeleton"
               initial={{ opacity: 0 }}
@@ -75,7 +92,7 @@ export function Profile() {
             </motion.div>
           )}
 
-          {isError && (
+          {isError && !data && (
             <motion.div
               key="error"
               className={styles.errorState}
@@ -93,7 +110,7 @@ export function Profile() {
             </motion.div>
           )}
 
-          {data && (
+          {showProfile && (
             <motion.div
               key="profile"
               initial={{ opacity: 0 }}
@@ -114,7 +131,6 @@ export function Profile() {
                     stats={data.stats}
                   />
                 </div>
-
                 <div className={styles.main}>
                   <RepoGrid repos={data.repos} />
                 </div>

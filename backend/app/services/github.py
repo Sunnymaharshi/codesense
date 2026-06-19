@@ -39,6 +39,17 @@ class GitHubClient:
             response.raise_for_status()
             return response.json()
 
+    def _get_sync(self, path: str, params: dict | None = None, timeout: float = 30.0) -> Any:
+        """Make a GET request synchronously. Returns parsed JSON."""
+        with httpx.Client(
+            base_url=self.BASE_URL,
+            headers=self._headers,
+            timeout=timeout,
+        ) as client:
+            response = client.get(path, params=params)
+            response.raise_for_status()
+            return response.json()
+
     # ── Public methods ────────────────────────────────────
 
     async def get_user(self, username: str) -> dict:
@@ -157,3 +168,84 @@ class GitHubClient:
             "has_license": ok(checks[10]) or ok(checks[11]),
             "has_contributing": ok(checks[12]),
         }
+
+    def get_repos_sync(self, username: str) -> list[dict[str, Any]]:
+        """Fetch all public repos synchronously (for Celery workers)."""
+        repos = []
+        page = 1
+        while True:
+            batch = self._get_sync(
+                f"/users/{username}/repos",
+                params={"per_page": 100, "page": page, "type": "public", "sort": "updated"},
+            )
+            if not batch:
+                break
+            repos.extend(batch)
+            page += 1
+            if len(batch) < 100:
+                break
+        return repos
+
+    def get_languages_sync(self, username: str, repo_name: str) -> dict[str, int]:
+        """Fetch language breakdown synchronously."""
+        try:
+            return self._get_sync(f"/repos/{username}/{repo_name}/languages", timeout=15)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                return {}
+            raise
+
+    def get_commit_count_sync(self, username: str, repo_name: str) -> int:
+        """Approximate commit count via the contributors endpoint synchronously."""
+        try:
+            data = self._get_sync(
+                f"/repos/{username}/{repo_name}/contributors",
+                params={"per_page": 1, "anon": "true"},
+                timeout=15,
+            )
+            if isinstance(data, list) and data:
+                return data[0].get("contributions", 0)
+            return 0
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in (404, 409):
+                return 0
+            raise
+
+    def get_repo_signals_sync(self, username: str, repo_name: str) -> dict[str, bool]:
+        """Check for presence of key files synchronously."""
+        checks = {
+            "has_readme": ["README.md", "README.rst", "README"],
+            "has_license": ["LICENSE", "LICENSE.md", "LICENSE.txt"],
+            "has_docker": ["Dockerfile", "docker-compose.yml"],
+            "has_ci": [
+                ".github/workflows",
+                ".circleci/config.yml",
+                ".travis.yml",
+                "Jenkinsfile",
+            ],
+            "has_tests": [
+                "tests/",
+                "test/",
+                "spec/",
+                "__tests__/",
+                "pytest.ini",
+                "jest.config.js",
+                "jest.config.ts",
+            ],
+            "has_contributing": ["CONTRIBUTING.md"],
+        }
+
+        results: dict[str, bool] = {k: False for k in checks}
+
+        for signal, paths in checks.items():
+            for path in paths:
+                try:
+                    self._get_sync(f"/repos/{username}/{repo_name}/contents/{path}", timeout=15)
+                    results[signal] = True
+                    break
+                except httpx.HTTPStatusError as e:
+                    if e.response.status_code != 404:
+                        break
+                    continue
+
+        return results

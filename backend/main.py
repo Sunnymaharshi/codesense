@@ -3,10 +3,11 @@ codesense — FastAPI application entry point.
 """
 
 import sentry_sdk
-from app.api.routes import analyze, profile
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes import analyze, profile
+from app.api.routes import ws as ws_routes
 from app.core.config import settings
 
 # ── Sentry (only in production) ──────────────────────────
@@ -26,10 +27,13 @@ app = FastAPI(
     redoc_url=None,
 )
 
-# ── CORS ─────────────────────────────────────────────────
+http_origins = [o.strip().rstrip("/") for o in settings.CORS_ORIGINS.split(",")]
+ws_origins = [o.replace("http://", "ws://").replace("https://", "wss://") for o in http_origins]
+all_origins = http_origins + ws_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS.split(","),
+    allow_origins=all_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,6 +42,7 @@ app.add_middleware(
 # ── Routers ──────────────────────────────────────────────
 app.include_router(analyze.router, prefix="/api", tags=["analyze"])
 app.include_router(profile.router, prefix="/api", tags=["profile"])
+app.include_router(ws_routes.router)
 
 
 # ── Health check ─────────────────────────────────────────

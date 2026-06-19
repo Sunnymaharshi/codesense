@@ -31,18 +31,22 @@ class RepoSignals(TypedDict):
     has_docker: bool
     has_license: bool
     has_contributing: bool
+    stars: int
+    forks: int
+    open_issues: int
+    commit_count: int
 
 
 def compute_health_score(
     signals: RepoSignals,
-    last_commit_at: datetime | None,
+    last_commit_at: datetime | str | None,
 ) -> tuple[int, str]:
     """
     Returns (score, grade).
 
     Args:
         signals:        output of GitHubClient.get_repo_signals()
-        last_commit_at: timezone-aware datetime of last push, or None
+        last_commit_at: timezone-aware datetime or ISO string of last push, or None
     """
     score = 0
 
@@ -60,6 +64,9 @@ def compute_health_score(
     # Recency bonus
     if last_commit_at is not None:
         now = datetime.now(timezone.utc)
+        # Parse ISO string if needed
+        if isinstance(last_commit_at, str):
+            last_commit_at = datetime.fromisoformat(last_commit_at.replace("Z", "+00:00"))
         # Ensure timezone-aware comparison
         if last_commit_at.tzinfo is None:
             last_commit_at = last_commit_at.replace(tzinfo=timezone.utc)

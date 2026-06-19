@@ -14,7 +14,7 @@
 
 ---
 
-## What's been built (Phase 1 — backend complete, frontend pending)
+## What's been built (Phase 1 — COMPLETE ✅)
 
 ### Infrastructure
 
@@ -45,13 +45,13 @@
 
 ### Backend — models
 
-| File                      | Status | Notes                                                                                                                                                                                         |
-| ------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app/models/__init__.py`  | ✅     | Imports all models — required for Alembic autogenerate discovery.                                                                                                                             |
-| `app/models/base.py`      | ✅     | `DeclarativeBase` + `utcnow()` helper.                                                                                                                                                        |
-| `app/models/profile.py`   | ✅     | `Developer`, `Repo`, `IndexingJob`, `ProfileSnapshot` + `IndexStatus`, `HealthGrade` enums.                                                                                                   |
-| `app/models/embedding.py` | ✅     | `CodeChunk`. `embedding` col is plain `Text` — conditional `if VECTOR_AVAILABLE` inside class body was removed (broke SQLAlchemy declarative). Phase 3 migration ALTERs it to `vector(1536)`. |
-| `app/models/llm_call.py`  | ✅     | Cost tracking — model, tokens_in/out, cost_usd, duration_ms, langsmith_run_id.                                                                                                                |
+| File                      | Status | Notes                                                                                                                                                                                                                                   |
+| ------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app/models/__init__.py`  | ✅     | Imports all models — required for Alembic autogenerate discovery.                                                                                                                                                                       |
+| `app/models/base.py`      | ✅     | `DeclarativeBase` + `utcnow()` helper.                                                                                                                                                                                                  |
+| `app/models/profile.py`   | ✅     | `Developer`, `Repo`, `IndexingJob`, `ProfileSnapshot` + `IndexStatus`, `HealthGrade` enums.                                                                                                                                             |
+| `app/models/embedding.py` | ✅     | `CodeChunk`. `embedding` col is plain `Text` — conditional `if VECTOR_AVAILABLE` inside class body was removed (broke SQLAlchemy declarative). Phase 3 migration ALTERs it to `vector(384)` (fastembed `bge-small-en-v1.5` output dim). |
+| `app/models/llm_call.py`  | ✅     | Cost tracking — model, tokens_in/out, cost_usd, duration_ms, langsmith_run_id.                                                                                                                                                          |
 
 ### Backend — API
 
@@ -80,64 +80,69 @@
 | ---------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `tests/__init__.py`          | ✅     | Package marker.                                                                                                                              |
 | `tests/conftest.py`          | ✅     | In-memory SQLite via `aiosqlite`. `db_session` + `client` fixtures. `dependency_overrides` injects test DB. No Postgres needed to run tests. |
-| `tests/test_health_score.py` | ✅     | 20 unit tests. Every scoring branch + edge cases. Start here: `make test`.                                                                   |
+| `tests/test_health_score.py` | ✅     | 20 unit tests. Every scoring branch + edge cases.                                                                                            |
 | `tests/test_analyze.py`      | ✅     | `POST /analyze` with mocked GitHub API. Tests happy path, 404, idempotent upsert.                                                            |
 | `tests/test_profile.py`      | ✅     | `GET /profile/{username}`. Tests developer fields, repos, stats, 404, case insensitivity.                                                    |
 
-### Frontend — styles
+### Backend — workers (stubs — Phase 2 implements these)
 
-| File                             | Status | Notes                                                                                                                       |
-| -------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------- |
-| `frontend/src/styles/tokens.css` | ✅     | Full token system: typography, spacing, radii, shadows, z-index, light + dark mode colors, semantic aliases, heatmap cells. |
-| `frontend/src/styles/global.css` | ✅     | Imports tokens, CSS reset, base styles, `.shimmer`, `.cursor` animations, `.sr-only`.                                       |
+| File                        | Status | Notes                                                                                                                                          |
+| --------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app/workers/__init__.py`   | ✅     | Package marker.                                                                                                                                |
+| `app/workers/celery_app.py` | ✅     | Celery instance. Redis broker + backend. `task_acks_late=True`, `worker_prefetch_multiplier=1` for fair dispatch.                              |
+| `app/workers/index_repo.py` | ✅     | `index_developer` + `index_single_repo` + `health_check` tasks. Currently stubs that log and return. Phase 2 replaces with real fan-out logic. |
 
-### Backend — workers (Phase 1 stubs, Phase 2 implementation)
+### Frontend — Phase 1 COMPLETE ✅
 
-| File                        | Status | Notes                                                                                                                                                                      |
-| --------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app/workers/__init__.py`   | ✅     | Package marker.                                                                                                                                                            |
-| `app/workers/celery_app.py` | ✅     | Celery instance. Redis broker + backend. `task_acks_late=True`, `worker_prefetch_multiplier=1` for fair dispatch.                                                          |
-| `app/workers/index_repo.py` | ✅     | `index_developer` + `index_single_repo` + `health_check` tasks. Phase 1: stubs that log and return. Phase 2: real fan-out logic replaces stubs. Worker starts cleanly now. |
-
-### Still to build — Frontend (Phase 1)
-
-- [ ] Vite scaffold: `npm create vite@latest . -- --template react-ts` + all npm installs
-- [ ] `frontend/src/main.tsx` — import `global.css`, mount app, QueryClient, RouterProvider
-- [ ] `frontend/src/router.ts` — TanStack Router routes: `/` and `/u/:username`
-- [ ] `frontend/src/lib/api.ts` — typed fetch wrappers for all endpoints
-- [ ] `frontend/src/store/profileStore.ts` — Zustand + immer
-- [ ] `frontend/src/pages/Home.tsx` — search bar + submit
-- [ ] `frontend/src/pages/Profile.tsx` — layout shell
-- [ ] `frontend/src/components/profile/ProfileHeader/`
-- [ ] `frontend/src/components/profile/StatsRow/`
-- [ ] `frontend/src/components/profile/RepoCard/`
-- [ ] `frontend/src/components/profile/RepoGrid/`
-- [ ] `frontend/src/components/profile/LanguageBars/`
-- [ ] `frontend/src/components/profile/ContributionStats/`
-- [ ] `frontend/src/components/ui/` — Badge, Card, Skeleton shared primitives
+| File                                                    | Status | Notes                                                                                                                                                                                             |
+| ------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `frontend/package.json`                                 | ✅     | All deps pinned. React 18, Vite 5, TanStack Router/Query/Virtual, Zustand, Framer Motion, Radix UI, Lucide.                                                                                       |
+| `frontend/vite.config.ts`                               | ✅     | React plugin, `@` path alias, proxy `/api` → `localhost:8000`, `/ws` → WS.                                                                                                                        |
+| `frontend/tsconfig.json`                                | ✅     | Strict mode, `bundler` moduleResolution, path aliases.                                                                                                                                            |
+| `frontend/index.html`                                   | ✅     | Entry point, mounts `#root`.                                                                                                                                                                      |
+| `frontend/src/styles/tokens.css`                        | ✅     | Full token system: typography, spacing, radii, shadows, z-index, dark mode colors, grade colors, heatmap cells.                                                                                   |
+| `frontend/src/styles/global.css`                        | ✅     | Imports tokens, CSS reset, base styles, `.shimmer`, `.cursor` animations, `.sr-only`, scrollbar.                                                                                                  |
+| `frontend/src/lib/types.ts`                             | ✅     | All TypeScript types matching backend schemas exactly: `DeveloperResponse`, `RepoResponse`, `ProfileStatsResponse`, `ProfileResponse`, `AnalyzeResponse`, `WsProgressMessage`, `StreamComponent`. |
+| `frontend/src/lib/api.ts`                               | ✅     | Typed fetch wrappers: `analyzeUser()`, `getProfile()`, `compareProfiles()`. `ApiError` class with status code.                                                                                    |
+| `frontend/src/lib/utils.ts`                             | ✅     | `getLangColor()`, `getGradeColor()`, `getGradeBg()`, `formatNumber()`, `formatPercent()`, `timeAgo()`, `cx()`.                                                                                    |
+| `frontend/src/store/profileStore.ts`                    | ✅     | Zustand + immer. State: `username`, `indexStatus`, `reposDone`, `reposTotal`, `jobId`, `error`.                                                                                                   |
+| `frontend/src/router.ts`                                | ✅     | TanStack Router. Routes: `/` → `Home`, `/u/$username` → `Profile`. Type-registered.                                                                                                               |
+| `frontend/src/main.tsx`                                 | ✅     | `QueryClientProvider` (staleTime 5min, gcTime 30min) + `RouterProvider`. Imports `global.css`.                                                                                                    |
+| `frontend/src/pages/Home.tsx` + `Home.module.css`       | ✅     | Search bar, spinner, error state, 5 example username buttons. `analyzeUser()` → navigate to profile.                                                                                              |
+| `frontend/src/pages/Profile.tsx` + `Profile.module.css` | ✅     | Sticky nav, skeleton → data swap via `AnimatePresence`. Sidebar (LanguageBars + ContributionStats) + main (RepoGrid) layout. Error + retry state.                                                 |
+| `frontend/src/components/ui/Badge/`                     | ✅     | Health grade pill. A=green, B=amber, C=gray, D/F=red. Sizes: sm/md/lg.                                                                                                                            |
+| `frontend/src/components/ui/Skeleton/`                  | ✅     | Base shimmer + `ProfileHeaderSkeleton`, `StatsRowSkeleton`, `RepoCardSkeleton`, `RepoGridSkeleton`.                                                                                               |
+| `frontend/src/components/profile/ProfileHeader/`        | ✅     | Avatar, display name, @handle (links to GitHub), bio, AI persona (italic, accent border).                                                                                                         |
+| `frontend/src/components/profile/StatsRow/`             | ✅     | 5 animated stat cards: repos, stars, forks, commits, avg health. Icons from lucide-react.                                                                                                         |
+| `frontend/src/components/profile/LanguageBars/`         | ✅     | Summary strip + legend. Animated fill bars via framer-motion. Top 8 languages.                                                                                                                    |
+| `frontend/src/components/profile/RepoCard/`             | ✅     | Name, description, grade Badge, signal pills (README/Tests/CI/Docker/License), footer meta (lang dot, stars, forks, commits, last commit).                                                        |
+| `frontend/src/components/profile/RepoGrid/`             | ✅     | Sort controls (Health/Stars/Commits/Recent) + responsive CSS grid of RepoCards.                                                                                                                   |
+| `frontend/src/components/profile/ContributionStats/`    | ✅     | Peak commit day, commit frequency/wk, repos-with-tests cards.                                                                                                                                     |
 
 ---
 
 ## Decisions made (don't revisit)
 
-| Decision                                    | Reason                                                                                                                                                                                                                    |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| React + Vite, NOT Next.js                   | FastAPI is the backend. No SSR needed. Next.js adds complexity with no payoff here.                                                                                                                                       |
-| Radix UI + CSS Modules, NOT Tailwind        | Full design control. CSS Modules scoped per component. Radix handles accessibility primitives.                                                                                                                            |
-| Build SVG components manually               | No Recharts/Chart.js. Shows deeper FE skill, keeps bundle small. D3 for math only, React renders SVG.                                                                                                                     |
-| pgvector, NOT Pinecone                      | Keep everything in Postgres. Simpler ops, no extra service.                                                                                                                                                               |
-| `ai/` separate from `backend/`              | AI layer has zero FastAPI knowledge. Importable, independently testable.                                                                                                                                                  |
-| No BigQuery, No Storybook                   | Out of scope. Component registry is its own design system story.                                                                                                                                                          |
-| All libraries free & open source            | No paid tiers. Every dependency is MIT/Apache licensed.                                                                                                                                                                   |
-| `uv` NOT pip/requirements.txt               | 10–100x faster installs. `pyproject.toml` + `uv.lock` replaces `requirements.txt`. Docker builds go from minutes to seconds. Run `uv sync` locally for IDE support.                                                       |
-| No conditional columns in SQLAlchemy models | `if VECTOR_AVAILABLE: embedding = ...` inside a class body breaks SQLAlchemy declarative mapping. Always define columns unconditionally — use `Text` as placeholder, ALTER in a migration later. Fixed in `embedding.py`. |
+| Decision                                    | Reason                                                                                                                                                                                                                            |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| React + Vite, NOT Next.js                   | FastAPI is the backend. No SSR needed. Next.js adds complexity with no payoff here.                                                                                                                                               |
+| Radix UI + CSS Modules, NOT Tailwind        | Full design control. CSS Modules scoped per component. Radix handles accessibility primitives.                                                                                                                                    |
+| Build SVG components manually               | No Recharts/Chart.js. Shows deeper FE skill, keeps bundle small. D3 for math only, React renders SVG.                                                                                                                             |
+| pgvector, NOT Pinecone                      | Keep everything in Postgres. Simpler ops, no extra service.                                                                                                                                                                       |
+| `ai/` separate from `backend/`              | AI layer has zero FastAPI knowledge. Importable, independently testable.                                                                                                                                                          |
+| No BigQuery, No Storybook                   | Out of scope. Component registry is its own design system story.                                                                                                                                                                  |
+| All libraries free & open source            | No paid tiers. Every dependency is MIT/Apache licensed.                                                                                                                                                                           |
+| `uv` NOT pip/requirements.txt               | 10–100x faster installs. `pyproject.toml` + `uv.lock` replaces `requirements.txt`. Docker builds go from minutes to seconds. Run `uv sync` locally for IDE support.                                                               |
+| No conditional columns in SQLAlchemy models | `if VECTOR_AVAILABLE: embedding = ...` inside a class body breaks SQLAlchemy declarative mapping. Always define columns unconditionally — use `Text` as placeholder, ALTER in a migration later. Fixed in `embedding.py`.         |
+| No tests until project is done              | Skipping vitest and @testing-library/react until all phases are built. Tests will be added at the end.                                                                                                                            |
+| `fastembed` NOT OpenAI for embeddings       | Runs locally on M4 CPU (~200MB RAM, ~0.5s/100 chunks). Free, no API key, no data leaving the machine. `BAAI/bge-small-en-v1.5` produces 384-dim vectors — excellent for code similarity. Removes OpenAI as a dependency entirely. |
 
 ---
 
 ## What makes it technically interesting
 
 1. **AI decides what UI to render.** Claude returns structured JSON `{ type, text, data }`. The React frontend maps `type` to a component registry and renders it inline in the chat — like Claude.ai renders artifacts. The AI drives the UI, not the user.
-2. **RAG on real code.** Code files are chunked by function, embedded via `text-embedding-3-small`, stored in pgvector. The assistant retrieves relevant chunks and cites them in answers.
+2. **RAG on real code.** Code files are chunked by function, embedded locally via `fastembed` (`BAAI/bge-small-en-v1.5`, runs on M4 CPU, free), stored in pgvector. The assistant retrieves relevant chunks and cites them in answers.
 3. **LangGraph analysis agent.** A multi-step agent with tools (GitHub API, code analyser) runs async via Celery, computing repo health scores, developer persona, and growth trajectory.
 4. **Real-time via WebSocket.** Indexing progress pushed live. Frontend applies optimistic UI — profile skeleton renders immediately, data fills in as the agent completes.
 5. **Virtual scroll.** TanStack Virtual for repo lists — handles 100+ repos without jank.
@@ -153,42 +158,41 @@
 
 ### Backend
 
-| Layer           | Tech                                                                                        |
-| --------------- | ------------------------------------------------------------------------------------------- |
-| API             | FastAPI, Pydantic v2                                                                        |
-| ORM             | SQLAlchemy 2.x (async) + Alembic                                                            |
-| Workers         | Celery + Redis broker                                                                       |
-| AI / RAG        | Anthropic API (`claude-sonnet-4-6`), LangGraph, LangSmith                                   |
-| Embeddings      | `text-embedding-3-small` (OpenAI)                                                           |
-| Database        | PostgreSQL 16 + pgvector extension                                                          |
-| Cache / Queue   | Redis                                                                                       |
-| Package manager | `uv` — replaces pip. 10–100x faster installs, lockfile via `uv.lock`, no `requirements.txt` |
-| Observability   | Sentry, LangSmith traces, structured JSON logs                                              |
-| Infra           | Docker + Docker Compose, GitHub Actions CI/CD                                               |
+| Layer           | Tech                                                                                                                  |
+| --------------- | --------------------------------------------------------------------------------------------------------------------- |
+| API             | FastAPI, Pydantic v2                                                                                                  |
+| ORM             | SQLAlchemy 2.x (async) + Alembic                                                                                      |
+| Workers         | Celery + Redis broker                                                                                                 |
+| AI / RAG        | Anthropic API (`claude-sonnet-4-6`), LangGraph, LangSmith                                                             |
+| Embeddings      | `fastembed` — runs locally, no API key, no cost. Model: `BAAI/bge-small-en-v1.5` (130MB, 384-dim, CPU-friendly on M4) |
+| Database        | PostgreSQL 16 + pgvector extension                                                                                    |
+| Cache / Queue   | Redis                                                                                                                 |
+| Package manager | `uv` — replaces pip. 10–100x faster installs, lockfile via `uv.lock`, no `requirements.txt`                           |
+| Observability   | Sentry, LangSmith traces, structured JSON logs                                                                        |
+| Infra           | Docker + Docker Compose, GitHub Actions CI/CD                                                                         |
 
 ### Frontend — complete library list (all free & open source)
 
-| Library                             | Purpose                                                                                     |
-| ----------------------------------- | ------------------------------------------------------------------------------------------- |
-| `react` + `vite`                    | Core SPA + build tool                                                                       |
-| `typescript`                        | Type safety throughout                                                                      |
-| `@radix-ui/react-*`                 | Accessible unstyled primitives — Dialog, Tooltip, Tabs, ScrollArea, DropdownMenu            |
-| CSS Modules                         | Scoped per-component styles — one `.module.css` per component, zero runtime cost            |
-| `framer-motion`                     | Mount/unmount animations, layout transitions, skeleton → data swap                          |
-| `lucide-react`                      | Icons — consistent, tree-shakeable, 1000+                                                   |
-| `shiki`                             | Syntax highlighting (WASM, VS Code quality) for `CodePattern` component                     |
-| `react-diff-view`                   | Unified/split diffs with line numbers for `CodePattern` component                           |
-| `d3-scale` + `d3-shape`             | Math only — coordinate calculations for radar + heatmap. React renders SVG.                 |
-| `@tanstack/react-router`            | Fully type-safe routing. Route params typed end to end.                                     |
-| `@tanstack/react-query` v5          | Server state — fetching, caching, background refetch                                        |
-| `@tanstack/react-virtual`           | Virtual scroll for repo grid (100+ repos)                                                   |
-| `zustand` + `immer`                 | Client state — profile store, chat store, indexing state                                    |
-| `ai` (Vercel AI SDK)                | `useChat` hook — SSE streaming, message history, abort. Free npm package, no Vercel needed. |
-| `@microsoft/fetch-event-source`     | Production SSE — reconnection, POST support, visibility handling                            |
-| `date-fns`                          | Date formatting — lightweight, tree-shakeable                                               |
-| `clsx`                              | Conditional class name utility                                                              |
-| `rollup-plugin-visualizer`          | Bundle analysis — `vite build` → `stats.html`                                               |
-| `vitest` + `@testing-library/react` | Unit + component tests                                                                      |
+| Library                         | Purpose                                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------------------- |
+| `react` + `vite`                | Core SPA + build tool                                                                       |
+| `typescript`                    | Type safety throughout                                                                      |
+| `@radix-ui/react-*`             | Accessible unstyled primitives — Dialog, Tooltip, Tabs, ScrollArea, DropdownMenu            |
+| CSS Modules                     | Scoped per-component styles — one `.module.css` per component, zero runtime cost            |
+| `framer-motion`                 | Mount/unmount animations, layout transitions, skeleton → data swap                          |
+| `lucide-react`                  | Icons — consistent, tree-shakeable, 1000+                                                   |
+| `shiki`                         | Syntax highlighting (WASM, VS Code quality) for `CodePattern` component                     |
+| `react-diff-view`               | Unified/split diffs with line numbers for `CodePattern` component                           |
+| `d3-scale` + `d3-shape`         | Math only — coordinate calculations for radar + heatmap. React renders SVG.                 |
+| `@tanstack/react-router`        | Fully type-safe routing. Route params typed end to end.                                     |
+| `@tanstack/react-query` v5      | Server state — fetching, caching, background refetch                                        |
+| `@tanstack/react-virtual`       | Virtual scroll for repo grid (100+ repos)                                                   |
+| `zustand` + `immer`             | Client state — profile store, chat store, indexing state                                    |
+| `ai` (Vercel AI SDK)            | `useChat` hook — SSE streaming, message history, abort. Free npm package, no Vercel needed. |
+| `@microsoft/fetch-event-source` | Production SSE — reconnection, POST support, visibility handling                            |
+| `date-fns`                      | Date formatting — lightweight, tree-shakeable                                               |
+| `clsx`                          | Conditional class name utility                                                              |
+| `rollup-plugin-visualizer`      | Bundle analysis — `vite build` → `stats.html`                                               |
 
 ---
 
@@ -479,10 +483,8 @@ WS   /ws/:username                   # indexing progress
 
 ## Environment variables
 
-Full `.env` for Phase 1 development. Only `GITHUB_TOKEN` and `SECRET_KEY` are required right now — everything else can stay blank until the phase that uses it.
-
 ```bash
-# ── Required now (Phase 1) ──────────────────────────────
+# ── Required now (Phase 2) ──────────────────────────────
 
 # github.com → Settings → Developer settings → Personal access tokens
 # → Tokens (classic) → Generate → scope: public_repo only. Free, 5000 req/hr.
@@ -510,9 +512,8 @@ CORS_ORIGINS=http://localhost:5173
 # Dev spend: ~$2–5 total while building.
 ANTHROPIC_API_KEY=
 
-# platform.openai.com → API Keys → Create.
-# Used ONLY for text-embedding-3-small. ~$0.02 per million tokens.
-OPENAI_API_KEY=
+# No OpenAI key needed — embeddings run locally via fastembed (BAAI/bge-small-en-v1.5).
+# Model downloads once (~130MB) to ~/.cache/fastembed/ on first worker start.
 
 # smith.langchain.com → Sign up (free) → Settings → API Keys.
 # Free tier: unlimited traces for personal projects.
@@ -536,7 +537,6 @@ SENTRY_DSN_FRONTEND=
 ```bash
 make dev        # docker-compose up with hot reload
 make migrate    # uv run alembic upgrade head
-make test       # uv run pytest + vitest
 make worker     # start Celery worker
 make seed       # seed 3 real GitHub profiles
 make install    # uv sync locally (for IDE support outside Docker)
@@ -547,92 +547,145 @@ make format     # ruff format
 
 ---
 
-## Next steps (Phase 1 — frontend only)
+## Phase 2 — Real-time indexing (COMPLETE ✅)
 
-Backend is complete and testable. All frontend work below.
+### Backend — new/replaced files
 
-### 1. Scaffold Vite + install deps
+| File                          | Status | Notes                                                                                                                                                        |
+| ----------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `app/workers/index_repo.py`   | ✅     | Real fan-out: `index_developer` fetches repos → `celery.group` of `index_single_repo` per repo → chord `on_indexing_complete`.                               |
+| `app/workers/redis_client.py` | ✅     | Sync Redis client (`redis.from_url`) for Celery workers. Used to `PUBLISH` progress events.                                                                  |
+| `app/db/sync_session.py`      | ✅     | Sync SQLAlchemy session (`SyncSessionLocal`) for workers. Converts `asyncpg://` URL to `psycopg2://`.                                                        |
+| `app/services/github_sync.py` | ✅     | Sync versions of GitHub API methods to paste into `GitHubService`: `get_repos_sync`, `get_languages_sync`, `get_commit_count_sync`, `get_repo_signals_sync`. |
+| `app/api/routes/analyze.py`   | ✅     | Phase 2 version — calls `index_developer.delay()` and returns immediately. Synchronous indexing loop removed.                                                |
+| `app/api/routes/ws.py`        | ✅     | `WS /ws/{username}` — subscribes to Redis pub/sub channel, streams events to client, closes on `done`/`error`.                                               |
+| `app/main_patch.py`           | ✅     | Instructions for registering WS router in `app/main.py`.                                                                                                     |
 
-```bash
-cd frontend
-npm create vite@latest . -- --template react-ts
-npm install
+**One manual step in `app/main.py`:**
 
-# UI + animation
-npm install @radix-ui/react-dialog @radix-ui/react-tooltip @radix-ui/react-tabs \
-  @radix-ui/react-scroll-area @radix-ui/react-dropdown-menu \
-  framer-motion lucide-react clsx date-fns
-
-# State + routing + data fetching
-npm install @tanstack/react-router @tanstack/react-query @tanstack/react-virtual \
-  zustand immer
-
-# Math for SVG charts (Phase 3 — install now, use later)
-npm install d3-scale d3-shape
-
-# Dev tools
-npm install -D vitest @testing-library/react rollup-plugin-visualizer
+```python
+from app.api.routes import ws as ws_routes
+app.include_router(ws_routes.router)   # no prefix — path is /ws/{username}
 ```
 
-### 2. `frontend/src/main.tsx`
+### Frontend — new/updated files
 
-Entry point. Import `global.css`. Mount `QueryClientProvider` + `RouterProvider`.
-
-```tsx
-import "./styles/global.css";
-```
-
-### 3. `frontend/src/router.ts`
-
-TanStack Router with two routes: `/` → `Home`, `/u/$username` → `Profile`.
-Note: TanStack Router uses `$param` syntax not `:param`.
-
-### 4. `frontend/src/lib/api.ts`
-
-Typed wrappers around `fetch`. Two functions to start:
-
-- `analyzeUser(username: string)` → `POST /api/analyze`
-- `getProfile(username: string)` → `GET /api/profile/{username}`
-
-### 5. `frontend/src/store/profileStore.ts`
-
-Zustand + immer. State shape:
-
-```ts
-{
-  username: string | null;
-  indexStatus: "idle" | "running" | "done" | "error";
-  reposDone: number;
-  reposTotal: number;
-}
-```
-
-### 6. `frontend/src/pages/Home.tsx`
-
-Search bar. On submit: call `analyzeUser()`, navigate to `/u/:username`.
-
-### 7. `frontend/src/pages/Profile.tsx`
-
-Layout shell. Uses `useProfile` (TanStack Query) to fetch `GET /api/profile/{username}`.
-Shows loading skeleton while fetching, then mounts components.
-
-### 8. Profile components (each gets its own folder + `.module.css`)
-
-Build in this order — simplest first:
-
-- `ui/Badge/` — health grade pill (A=green, B=amber, C=gray)
-- `ui/Skeleton/` — shimmer placeholder, reused everywhere
-- `profile/StatsRow/` — 5 stat cards from `stats` response field
-- `profile/LanguageBars/` — iterate `language_percentages`, render bars
-- `profile/RepoCard/` — name, description, grade badge, signal pills
-- `profile/RepoGrid/` — CSS grid of RepoCards (virtual scroll in Phase 2)
-- `profile/ProfileHeader/` — avatar, name, handle, AI persona (placeholder for now)
-- `profile/ContributionStats/` — peak day, commit frequency from developer fields
+| File                                                | Status | Notes                                                                                                            |
+| --------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------- |
+| `frontend/src/hooks/useIndexingProgress.ts`         | ✅     | Opens WS to `/ws/{username}` while status is pending/running. Drives Zustand store. Calls `onDone()` to refetch. |
+| `frontend/src/components/profile/IndexingProgress/` | ✅     | Banner with spinner → animated progress bar → check icon on done. Auto-hides after completion.                   |
+| `frontend/src/store/profileStore.ts`                | ✅     | Updated — adds `"idle"` status, `error` field. Replace Phase 1 version.                                          |
+| `frontend/src/lib/types.ts`                         | ✅     | Updated — `WsProgressMessage` now has `"started"` type + `repo` field. Replace Phase 1 version.                  |
+| `frontend/src/pages/Profile.tsx`                    | ✅     | Updated — wires `useIndexingProgress`, renders `<IndexingProgress />`, polls as fallback during indexing.        |
 
 ### Done when
 
 ```
-make dev && make migrate
+make dev && make migrate && make worker
 open http://localhost:5173
-type "torvalds" → see full profile with real GitHub data
+type "torvalds" → progress bar fills live as repos index → profile renders
+```
+
+---
+
+## Next steps — Phase 3 (AI / RAG layer)
+
+### Embedding decision (locked)
+
+**No OpenAI.** Embeddings run locally via `fastembed` — free, offline, no API key.
+
+|             | fastembed (chosen)         | OpenAI text-embedding-3-small |
+| ----------- | -------------------------- | ----------------------------- |
+| Cost        | Free                       | ~$0.02/M tokens               |
+| Latency     | ~0.5s/100 chunks on M4 CPU | ~200ms API round-trip         |
+| Privacy     | Stays on your machine      | Sent to OpenAI servers        |
+| Setup       | `pip install fastembed`    | API key + account             |
+| Vector dims | 384                        | 1536                          |
+| Quality     | Excellent for code         | Marginally better             |
+
+Model: `BAAI/bge-small-en-v1.5` (~130MB, downloads once to `~/.cache/fastembed/`).
+
+**Docker volume to persist the cache (add to `docker-compose.yml`):**
+
+```yaml
+worker:
+  volumes:
+    - fastembed_cache:/root/.cache/fastembed
+
+volumes:
+  fastembed_cache:
+```
+
+### What to build
+
+**`ai/` directory** (separate from `backend/` — zero FastAPI knowledge):
+
+```
+ai/
+├── __init__.py
+├── schemas/
+│   └── output.py          # AIMessage pydantic model
+├── agent/
+│   ├── __init__.py
+│   ├── graph.py            # LangGraph StateGraph definition
+│   ├── nodes.py            # retrieve, generate, format_component nodes
+│   ├── tools.py            # GitHub tool + code analyser tool
+│   └── prompts.py          # system prompt templates
+├── rag/
+│   ├── __init__.py
+│   ├── chunker.py          # split code files by function/class boundary
+│   ├── embedder.py         # fastembed BAAI/bge-small-en-v1.5 — local, free
+│   └── retriever.py        # pgvector cosine similarity search (vector(384))
+└── cost_tracker.py         # save LLMCall rows (Anthropic only — no OpenAI)
+```
+
+**Backend additions:**
+
+- `app/api/routes/query.py` — `POST /query` SSE endpoint. Accepts `{ username, question }`, streams events per the SSE protocol.
+- `app/api/routes/compare.py` — `GET /compare/:user1/:user2`.
+- `app/workers/embed_repo.py` — Celery task: chunker → fastembed → pgvector. Triggered after `index_single_repo` completes.
+- Migration `002_vector_column.py`: ALTER `code_chunks.embedding` from `TEXT` to `vector(384)`.
+
+**Frontend additions:**
+
+```
+src/
+├── hooks/
+│   └── useChat.ts                    # SSE streaming, message history, abort
+├── store/
+│   └── chatStore.ts                  # Zustand: messages, isStreaming, thinkingSteps
+├── components/
+│   ├── chat/
+│   │   ├── ChatPanel/                # slide-in panel, input bar, message list
+│   │   ├── ThinkingSteps/            # ✓ checked steps with timing
+│   │   └── MessageStream/            # text cursor + component registry switch
+│   └── ai-components/
+│       ├── CommitHeatmap/            # SVG GitHub-style grid
+│       ├── SkillRadar/               # SVG pentagon
+│       ├── GrowthTimeline/           # vertical milestone timeline
+│       ├── CodePattern/              # shiki + react-diff-view
+│       ├── RepoComparison/           # two-column scorecard
+│       ├── DeveloperPersona/         # paragraph + 4 trait bars
+│       └── HireRecommendation/       # verdict card
+└── lib/
+    └── registry.ts                   # ComponentType → component map
+```
+
+### SSE event protocol
+
+```
+event: thinking_step   data: { "message": "Retrieving commit history…", "done": false }
+event: thinking_step   data: { "message": "Retrieving commit history…", "done": true }
+event: token           data: { "char": "T" }
+event: component_type  data: { "type": "commit_heatmap" }
+event: component_data  data: { ...partial payload... }
+event: done            data: {}
+```
+
+### Done when
+
+```
+open http://localhost:5173/u/torvalds
+# click "Ask anything" → "when does torvalds ship code?"
+# → thinking steps appear → text streams → CommitHeatmap renders
 ```
