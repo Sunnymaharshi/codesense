@@ -40,6 +40,17 @@ async def analyze_user(
     )
     developer = result.scalar_one_or_none()
 
+    # ── In-progress guard ────────────────────────────────────────────────
+    if developer and developer.index_status in (IndexStatus.pending, IndexStatus.running):
+        logger.info(f"[analyze] @{username} indexing already in progress, skipping")
+        return AnalyzeResponse(
+            developer_id=developer.id,
+            job_id=None,
+            github_username=username,
+            status=developer.index_status,
+            message=f"@{username} is already being indexed. Please wait.",
+        )
+
     # ── Staleness check ──────────────────────────────────────────────────
     if (
         not force

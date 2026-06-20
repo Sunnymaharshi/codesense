@@ -32,22 +32,25 @@ const PEAK_DAY_INDEX: Record<string, number> = {
 };
 
 function generateCells(commitsPerWeek: number, peakDay: string | null | undefined, weeks: number): Cell[] {
-  const peakIdx = PEAK_DAY_INDEX[(peakDay ?? "tuesday").toLowerCase()] ?? 2;
+  const peakIdx = peakDay ? (PEAK_DAY_INDEX[peakDay.toLowerCase()] ?? null) : null;
 
-  // Lightweight deterministic seed from peakIdx + frequency
-  let s = (peakIdx * 7 + Math.round(commitsPerWeek * 10)) | 0;
+  // Lightweight deterministic seed from frequency
+  let s = (Math.round(commitsPerWeek * 10) + weeks) | 0;
   const rand = () => {
     s = (Math.imul(s + 1, 1664525) + 1013904223) | 0;
     return (s >>> 0) / 0x100000000;
   };
 
-  // Day-of-week weight: peak day gets 2.5×, adjacent ±1 get 1.5×, weekend 0.4×
+  // When peak day is known: weight it higher; otherwise use a flat weekday distribution
   const weights = DAYS.map((_, i) => {
-    const dist = Math.min(Math.abs(i - peakIdx), 7 - Math.abs(i - peakIdx));
-    if (dist === 0) return 2.5;
-    if (dist === 1) return 1.5;
-    if (i === 0 || i === 6) return 0.4; // weekend
-    return 1.0;
+    if (peakIdx !== null) {
+      const dist = Math.min(Math.abs(i - peakIdx), 7 - Math.abs(i - peakIdx));
+      if (dist === 0) return 2.5;
+      if (dist === 1) return 1.5;
+      if (i === 0 || i === 6) return 0.4;
+      return 1.0;
+    }
+    return i === 0 || i === 6 ? 0.4 : 1.0; // flat weekday, quieter weekends
   });
 
   const cells: Cell[] = [];

@@ -2,7 +2,7 @@ import { useParams, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, RefreshCw } from "lucide-react";
-import { compareProfiles } from "@/lib/api";
+import { compareProfiles, ApiError } from "@/lib/api";
 import { ComparisonHeader } from "@/components/compare/ComparisonHeader";
 import { ComparisonStats } from "@/components/compare/ComparisonStats";
 import { RepoGrid } from "@/components/profile/RepoGrid";
@@ -16,7 +16,7 @@ export function Compare() {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["compare", user1, user2],
     queryFn: () => compareProfiles(user1, user2),
-    retry: 1,
+    retry: (_, err) => !(err instanceof ApiError && err.status < 500),
   });
 
   return (
@@ -46,7 +46,9 @@ export function Compare() {
             <motion.div key="error" className={styles.errorState} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <p className={styles.errorTitle}>Couldn't load comparison</p>
               <p className={styles.errorMsg}>
-                {error instanceof Error ? error.message : "Both developers need to be analyzed first."}
+                {error instanceof ApiError
+                  ? error.message
+                  : "Both developers need to be indexed before comparing."}
               </p>
               <button className={styles.retryBtn} onClick={() => refetch()}>
                 <RefreshCw size={14} /> Try again

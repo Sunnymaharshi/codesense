@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { getProfile } from "@/lib/api";
 import { useProfileStore } from "@/store/profileStore";
+import { useChatStore } from "@/store/chatStore";
 import { useIndexingProgress } from "@/hooks/useIndexingProgress";
 import { useProfileMeta } from "@/hooks/useProfileMeta";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
@@ -26,10 +27,12 @@ import styles from "./Profile.module.css";
 export function Profile() {
   const { username } = useParams({ from: "/u/$username" });
   const { setUsername, indexStatus } = useProfileStore();
+  const clearChat = useChatStore((s) => s.clear);
 
   useEffect(() => {
     setUsername(username);
-  }, [username, setUsername]);
+    clearChat();
+  }, [username, setUsername, clearChat]);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["profile", username],

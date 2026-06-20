@@ -30,7 +30,7 @@ export function SkillRadar({ data }: Props) {
 
   return (
     <div className={styles.container}>
-      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+      <svg width="100%" viewBox="-20 -20 260 260" className={styles.svg}>
         {/* Grid rings */}
         {Array.from({ length: LEVELS }).map((_, li) => {
           const r = (RADIUS / LEVELS) * (li + 1);

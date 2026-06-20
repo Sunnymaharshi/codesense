@@ -122,6 +122,12 @@ html[data-theme="light"] .main::before {
   min-width: 0;
 }
 
+.input:focus,
+.input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 .input::placeholder {
   color: var(--color-fg-subtle);
 }

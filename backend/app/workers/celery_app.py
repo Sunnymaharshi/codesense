@@ -15,7 +15,7 @@ celery_app = Celery(
     "codesense",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["app.workers.index_repo"],  # register task modules
+    include=["app.workers.index_repo", "app.workers.analysis_agent"],  # register task modules
 )
 
 celery_app.conf.update(

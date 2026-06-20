@@ -156,6 +156,12 @@ LLMCall    → standalone cost-tracking table (columns exist, nothing writes to 
 
 **`ai/rag/` vs `ai/agent/`:** `ai/rag/pipeline.py` is the Phase 3 per-question RAG pipeline (async, called by `query.py`). `ai/agent/graph.py` is the Phase 4 analysis agent (sync, called by `analysis_agent.py` Celery task). The agent runs once per developer during indexing; the pipeline runs on every chat question. Do not mix them up.
 
+**Celery task registration:** Both `app.workers.index_repo` and `app.workers.analysis_agent` must be listed in `celery_app.py`'s `include` list. Missing either means the worker silently drops tasks with `KeyError: unregistered task`.
+
+**Re-index WebSocket reconnect:** `useIndexingProgress` only opens a WebSocket when `[username, wsSession]` changes. Re-indexing the same profile (same username) increments `wsSession` in the Zustand store (`incrementWsSession()`) to force a new WS connection. `setUsername` also resets all indexing state when switching between profiles so stale `"running"` status from a previous profile never bleeds into the next.
+
+**In-progress guard on `/api/analyze`:** If `developer.index_status` is `pending` or `running`, the endpoint returns early (even with `?force=true`) rather than spawning a duplicate Celery fan-out.
+
 ---
 
 ## CSS conventions
@@ -205,13 +211,12 @@ SENTRY_DSN_FRONTEND=
 ## API endpoints (current)
 
 ```
-POST /api/analyze                      # submit username → start indexing (async, skips if indexed < 1hr ago; ?force=true to override)
-GET  /api/profile/{username}           # full profile data
-GET  /api/compare/{user1}/{user2}      # side-by-side profiles as { left, right }
-POST /api/snapshot/{username}          # save a profile snapshot
-GET  /api/snapshots/{username}         # list saved snapshots
-POST /api/query                        # RAG question → SSE stream
-WS   /ws/{username}                    # live indexing progress
+POST /api/analyze                           # submit username → start indexing (skips if indexed < 1hr; ?force=true to bypass; 409 if already in progress)
+GET  /api/profile/{username}                # full profile data
+GET  /api/profile/{username}/agent-trace    # has_analysis, skill_scores, ai_persona, optional LangSmith trace URL
+GET  /api/compare/{user1}/{user2}           # side-by-side profiles as { left, right }
+POST /api/snapshot/{username}               # save a profile snapshot
+GET  /api/snapshots/{username}              # list saved snapshots
+POST /api/query                             # RAG question → SSE stream
+WS   /ws/{username}                         # live indexing progress
 ```
-
-See PLAN.md for endpoints not yet built (agent-trace).

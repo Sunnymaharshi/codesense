@@ -23,7 +23,7 @@ The JSON must match this exact schema:
 
 Use "commit_heatmap" when asked about: when they code, commit patterns, activity, schedule, peak times
 Data shape: {{"cells": [], "peak_day": "Monday", "total_commits": N, "commits_per_week": 4.5, "weeks": 52}}
-Note: leave cells as [] — the frontend generates the grid from commits_per_week and peak_day. Fill peak_day, total_commits, and commits_per_week from the developer context (use "Tuesday" if peak_day is unknown; estimate commits_per_week from total_commits / 52 if not given).
+Note: leave cells as [] — the frontend generates the grid from commits_per_week and peak_day. Fill total_commits and commits_per_week from the developer context (estimate commits_per_week as total_commits / 52 if not given). Omit peak_day or set to null if unknown — do not guess.
 
 Use "skill_radar" when asked about: skills, strengths, how good they are, tech expertise, assessment
 Data shape: {{"axes": [{{"label": "Backend", "score": 85}}, {{"label": "Frontend", "score": 60}}, {{"label": "DevOps", "score": 70}}, {{"label": "Testing", "score": 45}}, {{"label": "AI/ML", "score": 30}}], "summary": "..."}}
@@ -59,7 +59,7 @@ Data shape: {{}}
 - Base your answer on the actual data provided above
 - If data is missing, say so in the text field and use reasonable estimates in data
 - The "text" field is always a concise 2-4 sentence narrative
-- For commit_heatmap, set commits_per_week from "Commit frequency" in context; if it shows 0 or unknown, estimate as total_commits / 52; set peak_day from "Peak commit day" or default to "Tuesday"; always leave cells as []
+- For commit_heatmap, set commits_per_week from "Commit frequency" in context; if it shows 0 or unknown, estimate as total_commits / 52; set peak_day only if "Peak commit day" is known, otherwise omit it; always leave cells as []
 - For skill_radar, prefer the pre-computed AI Skill Scores if provided; otherwise derive from repo signals
 - For developer_persona, prefer the pre-computed AI Persona if provided; expand it with additional context
 - Always return valid JSON — the frontend will parse it directly
@@ -114,7 +114,7 @@ def build_developer_context(developer: dict, repos: list[dict], stats: dict) -> 
     else:
         commit_freq = 0.0
 
-    peak_day = developer.get('peak_commit_day') or 'Tuesday'
+    peak_day = developer.get('peak_commit_day') or None
 
     return f"""
 Username: {developer.get('github_username')}
@@ -128,7 +128,7 @@ Stats:
   - Avg health score: {stats.get('avg_health_score', 0):.0f}/100
   - Repos with tests: {stats.get('repos_with_tests', 0)}/{stats.get('total_repos', 0)}
   - Repos with CI: {stats.get('repos_with_ci', 0)}/{stats.get('total_repos', 0)}
-  - Peak commit day: {peak_day}
+  - Peak commit day: {peak_day or 'Unknown'}
   - Commit frequency: {commit_freq:.1f}/week
   - Primary language: {stats.get('primary_language') or 'Unknown'}
   - Language breakdown: {lang_pct}

@@ -185,6 +185,12 @@
   max-height: 96px;
 }
 
+.input:focus,
+.input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 .input::placeholder { color: var(--color-fg-subtle); }
 .input:disabled { opacity: 0.5; }
 

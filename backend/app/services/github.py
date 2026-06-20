@@ -54,13 +54,19 @@ class GitHubClient:
 
     # ── Public methods ────────────────────────────────────
 
-    async def get_user(self, username: str) -> dict:
+    async def get_user(self, username: str) -> dict | None:
         """
         Fetch a GitHub user's public profile.
+        Returns None if the user doesn't exist (404).
         Returns: { login, name, avatar_url, bio, company, location,
                    followers, following, public_repos, created_at, ... }
         """
-        return await self._get(f"/users/{username}")
+        try:
+            return await self._get(f"/users/{username}")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                return None
+            raise
 
     async def get_repos(self, username: str) -> list[dict]:
         """
@@ -211,7 +217,32 @@ class GitHubClient:
         except httpx.HTTPStatusError as e:
             if e.response.status_code in (404, 409):
                 return 0
+            if e.response.status_code == 403:
+                # GitHub blocks the contributors endpoint for repos with 10k+ commits.
+                # Fall back to reading the last page number from the commits Link header.
+                return self._commit_count_via_pagination(username, repo_name)
             raise
+
+    def _commit_count_via_pagination(self, username: str, repo_name: str) -> int:
+        """Get commit count by parsing the last page from the commits endpoint Link header."""
+        import re
+        try:
+            with httpx.Client(
+                base_url=self.BASE_URL, headers=self._headers, timeout=15
+            ) as client:
+                resp = client.get(
+                    f"/repos/{username}/{repo_name}/commits",
+                    params={"per_page": 1},
+                )
+                resp.raise_for_status()
+                link = resp.headers.get("link", "")
+                match = re.search(r'[?&]page=(\d+)>;\s*rel="last"', link)
+                if match:
+                    return int(match.group(1))
+                data = resp.json()
+                return len(data) if isinstance(data, list) else 0
+        except Exception:
+            return 0
 
     def get_repo_signals_sync(self, username: str, repo_name: str) -> dict[str, bool]:
         """Check for presence of key files synchronously."""

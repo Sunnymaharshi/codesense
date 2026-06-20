@@ -63,7 +63,7 @@ async def ws_progress(websocket: WebSocket, username: str) -> None:
 
             try:
                 payload = json.loads(data_str)
-                if payload.get("type") in ("done", "error"):
+                if payload.get("type") in ("agent_done", "agent_error", "error"):
                     logger.info(f"[ws] terminal event for @{username}, closing")
                     await websocket.close()
                     break

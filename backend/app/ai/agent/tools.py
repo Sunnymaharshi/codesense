@@ -104,7 +104,8 @@ def compute_growth(repos: list[dict]) -> list[dict]:
         lang = repo.get("primary_language")
         if not lang:
             continue
-        year_langs.setdefault(year, {})[lang] = year_langs[year].get(lang, 0) + 1
+        inner = year_langs.setdefault(year, {})
+        inner[lang] = inner.get(lang, 0) + 1
 
     milestones = []
     for year in sorted(year_langs):

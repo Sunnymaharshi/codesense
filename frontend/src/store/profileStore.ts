@@ -17,6 +17,7 @@ interface ProfileState {
   error: string | null;
   agentStatus: AgentStatus;
   agentStep: string | null;
+  wsSession: number;
 }
 
 interface ProfileActions {
@@ -26,6 +27,7 @@ interface ProfileActions {
   setJobId: (jobId: string | null) => void;
   setError: (error: string | null) => void;
   setAgentStatus: (status: AgentStatus, step?: string | null) => void;
+  incrementWsSession: () => void;
   reset: () => void;
 }
 
@@ -38,6 +40,7 @@ const initialState: ProfileState = {
   error: null,
   agentStatus: "idle",
   agentStep: null,
+  wsSession: 0,
 };
 
 export const useProfileStore = create<ProfileState & ProfileActions>()(
@@ -45,7 +48,18 @@ export const useProfileStore = create<ProfileState & ProfileActions>()(
     ...initialState,
 
     setUsername: (username) =>
-      set((s) => { s.username = username; }),
+      set((s) => {
+        if (s.username !== username) {
+          s.indexStatus = "idle";
+          s.reposDone = 0;
+          s.reposTotal = 0;
+          s.agentStatus = "idle";
+          s.agentStep = null;
+          s.error = null;
+          s.wsSession += 1;  // increment (not reset) so the effect dep always changes
+        }
+        s.username = username;
+      }),
 
     setIndexStatus: (status) =>
       set((s) => { s.indexStatus = status; }),
@@ -61,6 +75,9 @@ export const useProfileStore = create<ProfileState & ProfileActions>()(
 
     setAgentStatus: (status, step = null) =>
       set((s) => { s.agentStatus = status; s.agentStep = step ?? null; }),
+
+    incrementWsSession: () =>
+      set((s) => { s.wsSession += 1; }),
 
     reset: () => set((s) => { Object.assign(s, initialState); }),
   })),

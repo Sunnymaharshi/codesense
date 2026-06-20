@@ -43,7 +43,7 @@ function buildHeatmapData(developer: DeveloperResponse, stats: ProfileStatsRespo
 
   return {
     cells,
-    peak_day: developer.peak_commit_day ?? "Tuesday",
+    peak_day: developer.peak_commit_day ?? null,
     total_commits: totalCommits,
     weeks: 52,
   };

@@ -28,7 +28,7 @@ export function useIndexingProgress(
   username: string | null,
   { onDone, onAgentDone }: Options = {},
 ) {
-  const { indexStatus, setIndexStatus, setProgress, setError, setAgentStatus } =
+  const { indexStatus, wsSession, setIndexStatus, setProgress, setError, setAgentStatus } =
     useProfileStore();
   const wsRef = useRef<WebSocket | null>(null);
   const onDoneRef = useRef(onDone);
@@ -74,6 +74,7 @@ export function useIndexingProgress(
         switch (msg.type) {
           case "started":
             setIndexStatus("running");
+            setProgress(msg.repos_done ?? 0, msg.repos_total ?? 0);
             break;
 
           case "progress":
@@ -131,5 +132,5 @@ export function useIndexingProgress(
       closeWs();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [username]);
+  }, [username, wsSession]);
 }

@@ -12,14 +12,16 @@ interface Props {
 
 export function SnapshotInfo({ username, indexedAt }: Props) {
   const [reindexing, setReindexing] = useState(false);
-  const { setIndexStatus, setProgress } = useProfileStore();
+  const { setIndexStatus, setProgress, setAgentStatus, incrementWsSession } = useProfileStore();
 
   async function handleReindex() {
     setReindexing(true);
     try {
       await reindexUser(username);
       setProgress(0, 0);
+      setAgentStatus("idle");
       setIndexStatus("pending");
+      incrementWsSession();
     } finally {
       setReindexing(false);
     }

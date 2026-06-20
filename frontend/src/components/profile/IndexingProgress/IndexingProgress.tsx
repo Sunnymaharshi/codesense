@@ -5,10 +5,10 @@ import { useProfileStore } from "@/store/profileStore";
 import styles from "./IndexingProgress.module.css";
 
 const STEP_LABELS: Record<string, string> = {
-  fetch:   "Fetching code samples",
-  analyse: "Analyzing code patterns",
-  persona: "Generating developer persona",
-  score:   "Computing skill scores",
+  fetch:   "Diving into your code",
+  analyse: "Finding your patterns",
+  persona: "Understanding your style",
+  score:   "Mapping your strengths",
 };
 
 export function IndexingProgress() {
@@ -69,7 +69,7 @@ export function IndexingProgress() {
             <div className={styles.text}>
               {isFullyDone ? (
                 <span className={styles.doneLabel}>
-                  Indexed {reposTotal} {reposTotal === 1 ? "repo" : "repos"} · AI analyzed
+                  Profile ready · AI insights unlocked
                 </span>
               ) : isAnalyzing ? (
                 <span className={styles.analyzingLabel}>
@@ -78,12 +78,12 @@ export function IndexingProgress() {
                 </span>
               ) : reposTotal > 0 ? (
                 <span className={styles.label}>
-                  Indexing{" "}
+                  Exploring{" "}
                   <strong>{reposDone}</strong> of{" "}
-                  <strong>{reposTotal}</strong> repos…
+                  <strong>{reposTotal}</strong> projects…
                 </span>
               ) : (
-                <span className={styles.label}>Fetching repositories…</span>
+                <span className={styles.label}>Discovering your work…</span>
               )}
             </div>
 
