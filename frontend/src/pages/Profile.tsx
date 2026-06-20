@@ -54,6 +54,9 @@ export function Profile() {
         </Link>
         <div className={styles.navRight}>
           {data && <CompareEntry username={username} />}
+          {data?.developer.skill_scores && (
+            <span className={styles.aiAnalyzedBadge} title="AI analysis complete">AI analyzed</span>
+          )}
           {data && <AskAIButton />}
           {data && (
             <a

@@ -37,6 +37,17 @@
   gap: var(--space-4);
 }
 
+.aiAnalyzedBadge {
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--color-accent);
+  background: var(--color-accent-muted);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-full);
+  padding: 2px var(--space-2);
+  opacity: 0.85;
+}
+
 .ghLink {
   font-size: var(--text-sm);
   font-family: var(--font-mono);

@@ -43,11 +43,16 @@ backend/
         chunker.py    # splits files by function/class boundary, sliding-window fallback
         embedder.py   # fastembed singleton, lazy-loads BAAI/bge-small-en-v1.5 on first use
         retriever.py  # pgvector cosine search, top-k=8, min score 0.3
-      agent/          # Phase 3 pipeline lives here (graph.py + prompts.py) — reserved for Phase 4 LangGraph agent
+        pipeline.py   # run_pipeline() — async generator yielding SSE events, called by query.py
+        prompts.py    # SYSTEM_PROMPT + build_developer_context() (injects pre-computed ai_persona/skill_scores)
+      agent/          # Phase 4 LangGraph agent — runs ONCE during indexing, NOT per chat question
+        tools.py      # fetch_code_samples(), analyse_patterns(), compute_growth() — pure Python, no LLM
+        nodes.py      # 4 sync node functions: fetch_node, analyse_node, persona_node, score_node
+        graph.py      # StateGraph with conditional re-fetch edge; run_analysis() → (ai_persona, skill_scores)
       schemas/
         output.py     # AIMessage pydantic model + per-component data shapes
-    api/routes/       # analyze.py, profile.py, query.py, ws.py
-    workers/          # index_repo.py (fan-out), embed_repo.py, redis_client.py, celery_app.py
+    api/routes/       # analyze.py, profile.py, query.py, ws.py, compare.py, snapshot.py, agent_trace.py
+    workers/          # index_repo.py (fan-out), embed_repo.py, analysis_agent.py, redis_client.py, celery_app.py
     models/           # Developer, Repo, CodeChunk, IndexingJob, ProfileSnapshot, LLMCall
     services/         # github.py (async), github_sync.py (sync, for workers)
     db/               # session.py (async), sync_session.py (for workers)
@@ -141,7 +146,7 @@ LLMCall    → standalone cost-tracking table (columns exist, nothing writes to 
 
 **`query.py` stats are local:** `app/api/routes/query.py` has its own `_build_stats(repos)` helper — it does NOT import from `profile.py`. The field names differ between the two routes.
 
-**`ai/agent/` naming:** The Phase 3 RAG pipeline code currently lives in `backend/app/ai/agent/` (`graph.py` + `prompts.py`) — a naming artifact from when Phase 4 hadn't been started yet. Phase 4 will need to either rename these files first or work alongside them. See PLAN.md Phase 4.
+**`ai/rag/` vs `ai/agent/`:** `ai/rag/pipeline.py` is the Phase 3 per-question RAG pipeline (async, called by `query.py`). `ai/agent/graph.py` is the Phase 4 analysis agent (sync, called by `analysis_agent.py` Celery task). The agent runs once per developer during indexing; the pipeline runs on every chat question. Do not mix them up.
 
 ---
 

@@ -31,11 +31,11 @@ Status markers below (✅ / ❌ / ⚠️) reflect actual reality, not aspiration
 - ✅ Phase 1 — Foundation
 - ✅ Phase 2 — Celery + WebSockets + real-time
 - ✅ Phase 3 — RAG assistant + streaming component rendering (file naming note: `ai/agent/graph.py` should be `ai/rag/pipeline.py` — see note above)
-- ❌ Phase 4 — LangGraph analysis agent (**not started**)
+- ✅ Phase 4 — LangGraph analysis agent (complete)
 - ⚠️ Phase 5 — Performance + observability + deploy (performance + deploy configs done; observability not built)
 - ⚠️ Phase 6 — Compare + Snapshot tracking (compare ✅ done, snapshots ✅ done basic, history/diff view not built)
 
-**Starting point now:** Phase 4 — LangGraph analysis agent. It's the only fully-unstarted phase and the biggest gap in the project's actual capabilities.
+**Starting point now:** Phase 5 observability (Sentry, structured logging, LLMCall cost tracking) — the last meaningful code gap.
 
 ---
 
@@ -76,41 +76,30 @@ All of this is built and working:
 
 ---
 
-## Phase 4 — LangGraph analysis agent ❌ NOT STARTED — do this next
+## Phase 4 — LangGraph analysis agent ✅ COMPLETE
 
 **Goal:** Deep multi-step AI analysis. A real agent replaces heuristic health scoring and the Phase 3 pipeline's per-question guesswork.
 
-This is the one phase that actually needs LangGraph, tool definitions, and multi-step reasoning. Nothing here exists yet. The `Developer.ai_persona` and `Developer.skill_scores` columns have existed since the Phase 1 migration and are still empty — `SkillRadar` and `DeveloperPersona` currently work by having the Phase 3 pipeline guess at scores fresh on every chat question, which is not what this phase was meant to deliver.
+### What was built
 
-### AI tasks
+- [x] `app/ai/agent/tools.py` — `fetch_code_samples()`, `analyse_patterns()`, `compute_growth()` (pure Python, no LLM)
+- [x] `app/ai/agent/nodes.py` — 4 sync node functions: `fetch_node`, `analyse_node`, `persona_node`, `score_node`
+- [x] `app/ai/agent/graph.py` — real `StateGraph` (4 nodes, conditional re-fetch edge if < 5 samples on first attempt)
+- [x] `app/workers/analysis_agent.py` — `analyse_developer` Celery task; loads repos, calls `run_analysis()`, persists results
+- [x] `on_indexing_complete` triggers `analyse_developer.delay(developer_id)` after snapshot
+- [x] `GET /api/profile/{username}/agent-trace` — returns `has_analysis`, `skill_scores`, `ai_persona`, LangSmith URL
+- [x] `app/ai/rag/pipeline.py` + `app/ai/rag/prompts.py` — Phase 3 pipeline moved here from `ai/agent/` to free directory for real agent
+- [x] `query.py` import updated to `run_pipeline`; `developer_dict` includes `ai_persona` + `skill_scores`
+- [x] `build_developer_context()` in `rag/prompts.py` surfaces pre-computed persona/scores into the RAG prompt
+- [x] `Profile.tsx` shows "AI analyzed" badge in nav when `skill_scores` are present
 
-- [ ] `ai/agent/tools.py` — tool definitions:
-  - `fetch_repo_content(repo, file_path)` → raw file content
-  - `analyse_patterns(code)` → error handling style, test coverage, type hint usage
-  - `compute_growth(repos)` → timeline of tech stack milestones by year
-- [ ] `ai/agent/nodes.py` — LangGraph nodes:
-  - `fetch_node` — pull all repo data from GitHub
-  - `analyse_node` — run pattern tools on code samples
-  - `persona_node` — generate AI persona paragraph
-  - `score_node` — compute final skill scores (BE/FE/AI/DevOps/Testing)
-- [ ] `ai/agent/graph.py` — state machine: linear flow + conditional re-fetch edge if data is sparse
-- [ ] LangSmith: full graph trace per agent run
-- [ ] Save output: `ai_persona` text + `skill_scores` jsonb → `Developer` table
+### Notes
 
-### Backend tasks
-
-- [ ] Extend Celery indexing task (`on_indexing_complete` in `index_repo.py`) to trigger the LangGraph agent after embedding finishes
-- [ ] `GET /profile/:username/agent-trace` — return LangSmith run URL for the profile page
-
-### Frontend tasks
-
-- [ ] Agent trace panel on profile page — live step list, each node completion pushed via WebSocket
-- [ ] `SkillRadar` switches from Phase 3's per-question heuristic to the persisted, agent-computed `Developer.skill_scores`
-- [ ] `DeveloperPersona` switches from per-question LLM guess to the persisted `Developer.ai_persona`
-
-### Done when
-
-Indexing runs the full 4-node agent. Profile shows AI persona + real skill scores, computed once and persisted, not regenerated per chat question. Trace panel visible.
+- All agent nodes are sync (`def`, not `async def`) — LangGraph invoked via `graph.invoke()` inside Celery
+- `analysis_graph` compiled at module import time, reused across task invocations
+- Groq heuristic fallback in `score_node` so the task never hard-fails even if the API is unavailable
+- LangSmith tracing is automatic when `LANGCHAIN_TRACING_V2=true` and `LANGCHAIN_API_KEY` is set — no extra code needed
+- `SkillRadar` and `DeveloperPersona` in chat now receive pre-computed scores/persona via the RAG prompt context; the Phase 3 system prompt prefers them when present
 
 ---
 

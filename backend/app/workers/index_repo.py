@@ -288,6 +288,10 @@ def on_indexing_complete(
 
         _create_snapshot_sync(developer_id, db)
 
+    # Trigger Phase 4 analysis agent asynchronously — doesn't block indexing completion
+    from app.workers.analysis_agent import analyse_developer
+    analyse_developer.delay(developer_id)
+
     _publish(
         username,
         {

@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from app.ai.agent.graph import run_agent
+from app.ai.rag.pipeline import run_pipeline
 from app.api.deps import DbSession
 from app.core.config import settings
 from app.models.profile import Developer, Repo
@@ -105,6 +105,8 @@ async def query(body: QueryRequest, db: DbSession) -> StreamingResponse:
         "bio": developer.bio,
         "peak_commit_day": developer.peak_commit_day,
         "commit_frequency_per_week": developer.commit_frequency_per_week,
+        "ai_persona": developer.ai_persona,
+        "skill_scores": developer.skill_scores,
     }
 
     repos_list = [
@@ -129,7 +131,7 @@ async def query(body: QueryRequest, db: DbSession) -> StreamingResponse:
 
     async def event_stream():
         try:
-            async for event in run_agent(
+            async for event in run_pipeline(
                 question=question,
                 developer=developer_dict,
                 repos=repos_list,

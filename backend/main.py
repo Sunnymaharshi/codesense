@@ -6,6 +6,7 @@ import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes import agent_trace as agent_trace_routes
 from app.api.routes import analyze, profile
 from app.api.routes import compare as compare_routes
 from app.api.routes import query as query_routes
@@ -47,6 +48,7 @@ app.include_router(analyze.router, prefix="/api", tags=["analyze"])
 app.include_router(profile.router, prefix="/api", tags=["profile"])
 app.include_router(compare_routes.router, prefix="/api", tags=["compare"])
 app.include_router(snapshot_routes.router, prefix="/api", tags=["snapshot"])
+app.include_router(agent_trace_routes.router, prefix="/api", tags=["agent"])
 app.include_router(ws_routes.router)
 app.include_router(query_routes.router, prefix="/api")
 
