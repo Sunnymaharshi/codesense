@@ -47,9 +47,10 @@ export interface ProfileStatsResponse {
   total_stars: number;
   total_forks: number;
   total_commits: number;
+  avg_health_score: number;
   primary_language: string | null;
   language_percentages: Record<string, number>;
-  avg_health_score: number;
+  grade_counts: Record<string, number>;
   repos_with_tests: number;
   repos_with_ci: number;
 }
@@ -67,7 +68,7 @@ export interface AnalyzeRequest {
 
 export interface AnalyzeResponse {
   developer_id: string;
-  job_id: string;
+  job_id: string | null;
   status: IndexStatus;
   message: string;
 }

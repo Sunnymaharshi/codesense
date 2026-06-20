@@ -11,7 +11,7 @@
 COMPOSE      = docker compose -f docker-compose.yml -f docker-compose.dev.yml
 COMPOSE_EXEC = $(COMPOSE) exec
 
-.PHONY: setup dev down migrate frontend restart-worker \
+.PHONY: setup dev down migrate frontend restart-worker purge \
         logs shell-api shell-db seed build install lock lint format test fresh prod
 
 # ── First-time setup ──────────────────────────────────────────────────────────
@@ -59,6 +59,12 @@ frontend:
 # Use this to restart it after changing task code without restarting everything.
 restart-worker:
 	$(COMPOSE) restart worker
+
+# Discard all pending Celery tasks from Redis without wiping the database.
+# Run this before `make dev` if the worker picks up stale jobs from a previous session.
+purge:
+	$(COMPOSE_EXEC) worker celery -A app.workers.celery_app purge -f
+	@echo "All pending tasks purged."
 
 # ── Logs ─────────────────────────────────────────────────────────────────────
 

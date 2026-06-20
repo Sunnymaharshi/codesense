@@ -50,8 +50,8 @@ async def analyze_user(
     ):
         logger.info(f"[analyze] @{username} indexed recently, skipping re-index")
         return AnalyzeResponse(
-            developer_id=str(developer.id),
-            job_id="",
+            developer_id=developer.id,
+            job_id=None,
             github_username=username,
             status=IndexStatus.done,
             message=f"@{username} was indexed recently. Showing cached profile.",

@@ -8,10 +8,22 @@ import { Admin } from "@/pages/Admin";
 import { Compare } from "@/pages/Compare";
 import { Home } from "@/pages/Home";
 import { Profile } from "@/pages/Profile";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 /* ─── Root layout ────────────────────────────────────────── */
+function RootLayout() {
+  return (
+    <>
+      <Outlet />
+      <div style={{ position: "fixed", bottom: "var(--space-4)", right: "var(--space-4)", zIndex: "var(--z-toast)" }}>
+        <ThemeToggle />
+      </div>
+    </>
+  );
+}
+
 const rootRoute = createRootRoute({
-  component: Outlet,
+  component: RootLayout,
 });
 
 /* ─── Routes ─────────────────────────────────────────────── */

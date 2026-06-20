@@ -68,10 +68,15 @@ async def get_profile(username: str, db: DbSession) -> ProfileResponse:
 
     stats = ProfileStatsResponse(
         total_repos=total_repos,
+        total_stars=sum(r.stars for r in repos),
+        total_forks=sum(r.forks for r in repos),
+        total_commits=sum(r.commit_count for r in repos),
         avg_health_score=avg_health,
-        top_language=top_language,
+        primary_language=top_language,
         language_percentages=language_percentages,
         grade_counts=grade_counts,
+        repos_with_tests=sum(1 for r in repos if r.has_tests),
+        repos_with_ci=sum(1 for r in repos if r.has_ci),
     )
 
     return ProfileResponse(

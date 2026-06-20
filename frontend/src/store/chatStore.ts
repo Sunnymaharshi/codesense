@@ -90,9 +90,10 @@ export const useChatStore = create<ChatState & ChatActions>()(
     updateThinkingStep: (id, message, done) => set((s) => {
       const msg = s.messages.find((m) => m.id === id);
       if (!msg) return;
-      // Find last step with this message and update it
-      const step = [...msg.thinkingSteps].reverse().find((s) => s.message === message);
-      if (step) step.done = done;
+      // Find last pending step and update its text + done flag.
+      // The completion message may differ from the start message (e.g. "Searching…" → "Found 8 chunks").
+      const step = [...msg.thinkingSteps].reverse().find((st) => !st.done);
+      if (step) { step.message = message; step.done = done; }
     }),
 
     setComponent: (id, component) => set((s) => {

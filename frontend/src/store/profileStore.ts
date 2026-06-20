@@ -23,7 +23,7 @@ interface ProfileActions {
   setUsername: (username: string) => void;
   setIndexStatus: (status: IndexStatus) => void;
   setProgress: (done: number, total: number) => void;
-  setJobId: (jobId: string) => void;
+  setJobId: (jobId: string | null) => void;
   setError: (error: string | null) => void;
   setAgentStatus: (status: AgentStatus, step?: string | null) => void;
   reset: () => void;

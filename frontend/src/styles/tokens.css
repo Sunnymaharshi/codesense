@@ -67,7 +67,7 @@
   --duration-slow: 350ms;
 }
 
-/* ─── Light mode ─────────────────────────────────────────── */
+/* ─── Dark mode (default) ────────────────────────────────── */
 :root {
   --color-bg: #0d1117;
   --color-bg-subtle: #161b22;
@@ -122,6 +122,47 @@
   --color-heatmap-2: #006d32;
   --color-heatmap-3: #26a641;
   --color-heatmap-4: #39d353;
+}
+
+/* ─── Light mode ────────────────────────────────────────── */
+html[data-theme="light"] {
+  --color-bg: #ffffff;
+  --color-bg-subtle: #f6f8fa;
+  --color-bg-muted: #eaeef2;
+  --color-bg-emphasis: #d0d7de;
+
+  --color-border: #d0d7de;
+  --color-border-muted: #eaeef2;
+  --color-border-subtle: #f6f8fa;
+
+  --color-fg: #1f2328;
+  --color-fg-muted: #636c76;
+  --color-fg-subtle: #6e7781;
+  --color-fg-onEmphasis: #ffffff;
+
+  --color-accent: #1a7f37;
+  --color-accent-muted: rgba(26, 127, 55, 0.12);
+  --color-accent-emphasis: #116329;
+
+  --color-grade-a: #1a7f37;
+  --color-grade-a-bg: rgba(26, 127, 55, 0.1);
+  --color-grade-b: #9a6700;
+  --color-grade-b-bg: rgba(154, 103, 0, 0.1);
+  --color-grade-c: #6e7781;
+  --color-grade-c-bg: rgba(110, 119, 129, 0.1);
+  --color-grade-d: #cf222e;
+  --color-grade-d-bg: rgba(207, 34, 46, 0.1);
+
+  --color-success: #1a7f37;
+  --color-warning: #9a6700;
+  --color-danger: #cf222e;
+  --color-info: #0969da;
+
+  --color-heatmap-0: #ebedf0;
+  --color-heatmap-1: #9be9a8;
+  --color-heatmap-2: #40c463;
+  --color-heatmap-3: #30a14e;
+  --color-heatmap-4: #216e39;
 }
 
 /* ─── Reduced motion ─────────────────────────────────────── */

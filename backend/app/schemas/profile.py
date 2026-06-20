@@ -74,15 +74,20 @@ class RepoResponse(BaseModel):
 
 class ProfileStatsResponse(BaseModel):
     total_repos: int
+    total_stars: int
+    total_forks: int
+    total_commits: int
     avg_health_score: float
-    top_language: Optional[str]
+    primary_language: Optional[str]
     language_percentages: dict[str, float]  # { "Python": 58.3, "TypeScript": 22.1 }
     grade_counts: dict[str, int]  # { "A": 8, "B": 14, "C": 12 }
+    repos_with_tests: int
+    repos_with_ci: int
 
 
 class AnalyzeResponse(BaseModel):
     developer_id: int
-    job_id: int
+    job_id: Optional[int]
     github_username: str
     status: IndexStatus
     message: str
