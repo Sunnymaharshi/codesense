@@ -1,0 +1,50 @@
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: transparent;
+  border: 1px solid var(--color-border-muted);
+  border-radius: var(--radius-full);
+  color: var(--color-fg-subtle);
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: color var(--duration-fast), border-color var(--duration-fast);
+}
+
+.trigger:hover {
+  color: var(--color-fg-muted);
+  border-color: var(--color-border);
+}
+
+.form {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.input {
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border-muted);
+  border-radius: var(--radius-md);
+  color: var(--color-fg);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  padding: var(--space-1) var(--space-3);
+  width: 120px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--color-accent);
+}
+
+.go {
+  background: var(--color-accent-muted);
+  border: 1px solid rgba(63, 185, 80, 0.3);
+  border-radius: var(--radius-md);
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+}

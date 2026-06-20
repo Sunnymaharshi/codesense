@@ -1,0 +1,1 @@
+export { CompareEntry } from "./CompareEntry";

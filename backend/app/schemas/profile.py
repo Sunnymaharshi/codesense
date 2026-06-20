@@ -92,3 +92,8 @@ class ProfileResponse(BaseModel):
     developer: DeveloperResponse
     repos: list[RepoResponse]
     stats: ProfileStatsResponse
+
+
+class CompareResponse(BaseModel):
+    left: ProfileResponse
+    right: ProfileResponse

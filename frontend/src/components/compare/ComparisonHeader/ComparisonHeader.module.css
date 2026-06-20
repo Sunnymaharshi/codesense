@@ -1,0 +1,60 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  padding: var(--space-8) 0;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  max-width: 320px;
+}
+
+.left { justify-content: flex-end; text-align: right; flex-direction: row-reverse; }
+.right { justify-content: flex-start; text-align: left; }
+
+.avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.name {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--color-fg);
+}
+
+.handle {
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+  color: var(--color-fg-subtle);
+}
+
+.handle:hover { color: var(--color-accent); }
+
+.vs {
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+  color: var(--color-fg-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .row { flex-direction: column; gap: var(--space-4); }
+  .left, .right { flex-direction: row; justify-content: center; text-align: left; }
+}

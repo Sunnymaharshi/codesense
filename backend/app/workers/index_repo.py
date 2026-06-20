@@ -26,6 +26,7 @@ from app.services.health_score import (
     compute_language_percentages,
     get_top_language,
 )
+from app.models.profile import ProfileSnapshot
 from app.workers.celery_app import celery_app
 from app.workers.redis_client import redis_client
 
@@ -227,6 +228,42 @@ def index_single_repo(self, developer_id: str, job_id: str, username: str, repo_
 # ─── Chord callback ───────────────────────────────────────────────────────────
 
 
+def _create_snapshot_sync(developer_id: str, db) -> None:
+    from sqlalchemy import select
+
+    repos = db.execute(select(Repo).where(Repo.developer_id == developer_id)).scalars().all()
+
+    scores = [r.health_score for r in repos if r.health_score is not None]
+    avg_health = round(sum(scores) / len(scores), 1) if scores else 0.0
+
+    merged_languages: dict[str, int] = {}
+    for repo in repos:
+        if repo.all_languages:
+            for lang, pct in repo.all_languages.items():
+                merged_languages[lang] = merged_languages.get(lang, 0) + pct
+
+    snapshot_data = {
+        "total_repos": len(repos),
+        "avg_health_score": avg_health,
+        "total_stars": sum(r.stars or 0 for r in repos),
+        "total_commits": sum(r.commit_count or 0 for r in repos),
+        "top_language": get_top_language(merged_languages),
+        "language_percentages": compute_language_percentages(merged_languages),
+        "repos": [
+            {
+                "name": r.name,
+                "health_score": r.health_score,
+                "health_grade": r.health_grade.value if r.health_grade else None,
+                "stars": r.stars,
+            }
+            for r in repos
+        ],
+    }
+
+    db.add(ProfileSnapshot(developer_id=developer_id, snapshot_data=snapshot_data, taken_at=datetime.now(UTC)))
+    db.commit()
+
+
 @celery_app.task
 def on_indexing_complete(
     results: list, developer_id: str, job_id: str, username: str, total: int
@@ -248,6 +285,8 @@ def on_indexing_complete(
             developer.indexed_at = datetime.now(UTC)
 
         db.commit()
+
+        _create_snapshot_sync(developer_id, db)
 
     _publish(
         username,

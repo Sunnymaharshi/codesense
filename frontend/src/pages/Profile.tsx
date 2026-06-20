@@ -6,12 +6,15 @@ import { ArrowLeft, RefreshCw } from "lucide-react";
 import { getProfile } from "@/lib/api";
 import { useProfileStore } from "@/store/profileStore";
 import { useIndexingProgress } from "@/hooks/useIndexingProgress";
+import { useProfileMeta } from "@/hooks/useProfileMeta";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { StatsRow } from "@/components/profile/StatsRow";
 import { LanguageBars } from "@/components/profile/LanguageBars";
 import { RepoGrid } from "@/components/profile/RepoGrid";
 import { ContributionStats } from "@/components/profile/ContributionStats";
 import { IndexingProgress } from "@/components/profile/IndexingProgress";
+import { SnapshotInfo } from "@/components/profile/SnapshotInfo";
+import { CompareEntry } from "@/components/profile/CompareEntry";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { AskAIButton } from "@/components/chat/AskAIButton";
 import {
@@ -33,12 +36,14 @@ export function Profile() {
     queryKey: ["profile", username],
     queryFn: () => getProfile(username),
     retry: 2,
-    refetchInterval: indexStatus === "running" ? 3000 : false,
+    refetchInterval: indexStatus === "running" || indexStatus === "pending" ? 3000 : false,
   });
 
   useIndexingProgress(username, {
     onDone: () => setTimeout(() => refetch(), 500),
   });
+
+  useProfileMeta(data);
 
   return (
     <div className={styles.page}>
@@ -48,6 +53,7 @@ export function Profile() {
           codesense
         </Link>
         <div className={styles.navRight}>
+          {data && <CompareEntry username={username} />}
           {data && <AskAIButton />}
           {data && (
             <a
@@ -88,10 +94,15 @@ export function Profile() {
 
           {data && (
             <motion.div key="profile" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
-              <ProfileHeader developer={data.developer} />
+              <div className={styles.headerRow}>
+                <ProfileHeader developer={data.developer} />
+                <SnapshotInfo username={username} indexedAt={data.developer.indexed_at} />
+              </div>
+
               <div className={styles.statsSection}>
                 <StatsRow stats={data.stats} />
               </div>
+
               <div className={styles.columns}>
                 <div className={styles.sidebar}>
                   <LanguageBars stats={data.stats} />
@@ -106,7 +117,6 @@ export function Profile() {
         </AnimatePresence>
       </div>
 
-      {/* Chat panel — slides in from right */}
       {data && <ChatPanel username={username} />}
     </div>
   );

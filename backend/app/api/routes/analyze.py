@@ -1,13 +1,16 @@
 """
-Phase 2 version of analyze.py.
+app/api/routes/analyze.py — Phase 4 update
 
-Key change from Phase 1:
-  - Indexing is now ASYNC via Celery — we enqueue the task and return immediately.
-  - The synchronous indexing loop is REMOVED.
-  - Frontend connects to WS /ws/{username} to track real-time progress.
+Adds staleness check: if developer was indexed less than 1 hour ago,
+return the existing data instead of re-triggering a full Celery fan-out.
+Protects the free Groq/GitHub rate limits on a public demo from being
+exhausted by repeated re-indexing of the same popular username.
+
+Pass ?force=true to bypass and re-index anyway (used by the "Re-index"
+button in SnapshotInfo on the frontend).
 """
-
 import logging
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
@@ -20,26 +23,46 @@ from app.workers.index_repo import index_developer
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+STALENESS_WINDOW = timedelta(hours=1)
+
 
 @router.post("/analyze", response_model=AnalyzeResponse)
 async def analyze_user(
     body: AnalyzeRequest,
     db: DbSession,
     github: GitHubDep,
+    force: bool = False,
 ) -> AnalyzeResponse:
     username = body.github_username.strip().lower()
+
+    result = await db.execute(
+        select(Developer).where(Developer.github_username == username)
+    )
+    developer = result.scalar_one_or_none()
+
+    # ── Staleness check ──────────────────────────────────────────────────
+    if (
+        not force
+        and developer
+        and developer.index_status == IndexStatus.done
+        and developer.indexed_at
+        and datetime.now(UTC) - developer.indexed_at < STALENESS_WINDOW
+    ):
+        logger.info(f"[analyze] @{username} indexed recently, skipping re-index")
+        return AnalyzeResponse(
+            developer_id=str(developer.id),
+            job_id="",
+            github_username=username,
+            status=IndexStatus.done,
+            message=f"@{username} was indexed recently. Showing cached profile.",
+        )
 
     # Validate user exists on GitHub
     gh_user = await github.get_user(username)
     if not gh_user:
         raise HTTPException(status_code=404, detail=f"GitHub user '{username}' not found")
 
-    # Upsert Developer row
-    result = await db.execute(select(Developer).where(Developer.github_username == username))
-    developer = result.scalar_one_or_none()
-
     if developer:
-        # Update profile fields from fresh GitHub data
         developer.display_name = gh_user.get("name")
         developer.avatar_url = gh_user.get("avatar_url")
         developer.bio = gh_user.get("bio")
@@ -54,9 +77,8 @@ async def analyze_user(
         )
         db.add(developer)
 
-    await db.flush()  # get developer.id
+    await db.flush()
 
-    # Create a fresh IndexingJob
     job = IndexingJob(
         developer_id=developer.id,
         status=IndexStatus.pending,
@@ -68,9 +90,8 @@ async def analyze_user(
     await db.refresh(developer)
     await db.refresh(job)
 
-    # Enqueue Celery fan-out — returns immediately
     index_developer.delay(str(developer.id), str(job.id))
-    logger.info(f"[analyze] enqueued index_developer for @{username}, job={job.id}")
+    logger.info(f"[analyze] enqueued index_developer for @{username}, job={job.id}, force={force}")
 
     return AnalyzeResponse(
         developer_id=str(developer.id),
