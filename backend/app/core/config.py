@@ -23,11 +23,9 @@ class Settings(BaseSettings):
     GITHUB_TOKEN: str
 
     GROQ_API_KEY: str
-    # OpenAI (embeddings)
-    OPENAI_API_KEY: str
 
     # LangSmith
-    LANGCHAIN_TRACING_V2: bool = True
+    LANGCHAIN_TRACING_V2: bool = False
     LANGCHAIN_API_KEY: str = ""
     LANGCHAIN_PROJECT: str = "codesense"
 

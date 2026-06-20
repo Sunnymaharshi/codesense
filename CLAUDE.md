@@ -13,15 +13,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
+# First time only
+make setup        # cp .env.example .env + npm install frontend deps
+
+# Daily workflow
 make dev          # docker-compose up with hot reload (postgres + redis + api + worker)
-make migrate      # uv run alembic upgrade head
-make worker       # start Celery worker (run in a separate terminal alongside make dev)
-make seed         # seed 3 real GitHub profiles
-make install      # uv sync locally (for IDE support outside Docker)
-make lock         # uv lock (after editing pyproject.toml)
-make lint         # ruff check
-make format       # ruff format
-make test         # pytest (uses in-memory SQLite via aiosqlite — no Postgres needed)
+make migrate      # alembic upgrade head (run once after first `make dev`)
+make frontend     # start Vite dev server in a second terminal
+
+# Utilities
+make restart-worker   # restart Celery worker without touching other services
+make fresh            # wipe all volumes and start from scratch
+make seed             # seed 3 real GitHub profiles
+make install          # uv sync locally (for IDE support outside Docker)
+make lock             # uv lock (after editing pyproject.toml)
+make lint             # ruff check
+make format           # ruff format
+make test             # pytest (uses in-memory SQLite via aiosqlite — no Postgres needed)
 ```
 
 Run a single test:

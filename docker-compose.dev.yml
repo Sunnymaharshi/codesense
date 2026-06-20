@@ -7,8 +7,9 @@ services:
       context: ./backend
       dockerfile: Dockerfile.dev
     volumes:
-      - ./backend:/app # hot reload: code changes reflect instantly
-      - uv_cache:/root/.cache/uv # persist uv cache across rebuilds
+      - ./backend:/app
+      - uv_cache:/root/.cache/uv
+      - fastembed_cache:/root/.cache/fastembed
     environment:
       - PYTHONUNBUFFERED=1
       - VIRTUAL_ENV=/venv
@@ -22,6 +23,7 @@ services:
     volumes:
       - ./backend:/app
       - uv_cache:/root/.cache/uv
+      - fastembed_cache:/root/.cache/fastembed
     environment:
       - PYTHONUNBUFFERED=1
       - VIRTUAL_ENV=/venv
@@ -38,3 +40,4 @@ services:
 
 volumes:
   uv_cache:
+  fastembed_cache:

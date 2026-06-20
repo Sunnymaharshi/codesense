@@ -14,6 +14,7 @@ Flow:
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -69,18 +70,31 @@ def _build_graph() -> StateGraph:
 analysis_graph = _build_graph()
 
 
+_NODE_MESSAGES: dict[str, str] = {
+    "fetch":   "Fetching code samples",
+    "analyse": "Analyzing code patterns",
+    "persona": "Generating developer persona",
+    "score":   "Computing skill scores",
+}
+
+
 def run_analysis(
     username: str,
     developer_id: int,
     repos: list[dict],
     github_token: str,
     groq_api_key: str,
+    publish: Callable[[dict], None] | None = None,
 ) -> tuple[str | None, dict | None]:
     """
     Entry point called by the Celery task.
-    Returns (ai_persona, skill_scores).
-    Both may be None if the agent fails — caller handles gracefully.
+    Returns (ai_persona, skill_scores) — both may be None on failure.
+
+    publish: optional callable that receives progress dicts
+             { type: "agent_started"|"agent_step"|"agent_done"|"agent_error", ... }
     """
+    _pub = publish or (lambda _: None)
+
     initial: AnalysisState = {
         "username": username,
         "developer_id": developer_id,
@@ -97,15 +111,32 @@ def run_analysis(
     }
 
     logger.info(f"[analysis_agent] starting for @{username} ({len(repos)} repos)")
+    _pub({"type": "agent_started", "message": f"Analyzing @{username}…"})
+
     try:
-        result = analysis_graph.invoke(initial)
-        persona = result.get("ai_persona")
-        scores = result.get("skill_scores")
+        # stream(mode="updates") yields {node_name: {changed_keys}} after each node.
+        # We accumulate to reconstruct final state without a second .invoke() call.
+        state: dict = dict(initial)
+        for node_updates in analysis_graph.stream(initial, stream_mode="updates"):
+            for node_name, updates in node_updates.items():
+                state.update(updates)
+                msg = _NODE_MESSAGES.get(node_name, node_name)
+                if node_name == "fetch" and "code_samples" in updates:
+                    n = len(updates["code_samples"])
+                    msg = f"Fetched {n} code sample{'s' if n != 1 else ''}"
+                _pub({"type": "agent_step", "step": node_name, "message": msg})
+                logger.debug(f"[analysis_agent] node={node_name} msg={msg}")
+
+        persona = state.get("ai_persona")
+        scores = state.get("skill_scores")
         logger.info(
             f"[analysis_agent] done for @{username}: "
             f"persona={'yes' if persona else 'no'}, scores={scores}"
         )
+        _pub({"type": "agent_done", "message": "AI analysis complete"})
         return persona, scores
+
     except Exception:
         logger.exception(f"[analysis_agent] failed for @{username}")
+        _pub({"type": "agent_error", "message": "AI analysis failed — profile still usable"})
         return None, None

@@ -42,6 +42,7 @@ export function Profile() {
 
   useIndexingProgress(username, {
     onDone: () => setTimeout(() => refetch(), 500),
+    onAgentDone: () => setTimeout(() => refetch(), 500),
   });
 
   useProfileMeta(data);

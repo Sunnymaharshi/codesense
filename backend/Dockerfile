@@ -18,5 +18,8 @@ RUN uv sync --frozen --no-install-project --dev
 # Verify binaries are present at build time — fails fast if lockfile is broken
 RUN /venv/bin/uvicorn --version && /venv/bin/celery --version
 
-# No COPY . . — source is mounted as a volume for hot reload
+COPY . .
+
 EXPOSE 8000
+
+CMD ["/venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

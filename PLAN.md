@@ -168,6 +168,30 @@ Build these when the core profile is stable. Both add real value and virality.
 
 ---
 
+## Future improvements
+
+Items flagged after full-project review. Ordered by impact-to-effort ratio.
+
+### Quick wins (under 1 hour each)
+
+- [ ] **Add source metadata to RAG chunks** — prepend `# repo: {repo_name}  file: {file_path}` as a comment above each chunk in `build_developer_context()`. Currently the LLM receives raw code with no provenance. Responses would change from "their code does X" to "in their `payments-api` repo, `handlers.py` does X".
+
+- [ ] **Gevent worker pool** — change Celery worker command from `--concurrency=4` to `--pool=gevent --concurrency=50`. GitHub API calls are IO-bound; prefork wastes 4 OS processes on network waits. Add `gevent` to `pyproject.toml`. Indexing a developer with 60 repos drops from ~60s to ~8s.
+
+### Medium (2-4 hours each)
+
+- [ ] **`CodePattern` AI component** — `shiki` and `react-diff-view` are already installed in `package.json` but unused. The `code_pattern` type exists in `AIMessage` (`output.py`) but is not in `registry.ts`. Build `frontend/src/components/ai-components/CodePattern/` and register it. This is the most natural chat response: "how do they handle errors?" → renders a highlighted code block from their actual repo.
+  - Backend: update `prompts.py` to ask the LLM to return `code_pattern` when showing code examples
+  - Frontend: `CodePattern.tsx` — shiki `codeToHtml()` on the `data.code` field, language from `data.language`
+
+- [ ] **AI-powered compare summary** — after loading both profiles in `compare.py`, make one Groq call (~300 tokens) to generate a 2-sentence natural language comparison. Return it as `summary: string` in `CompareResponse`. Render it at the top of `Compare.tsx` above the side-by-side stats. This is the feature that makes someone share the compare URL.
+  - Backend: add `summary` field to `CompareResponse` in `schemas/profile.py`, generate in `compare.py`
+  - Frontend: render in `ComparisonHeader` with a subtle card below the "vs" divider
+
+- [ ] **Embed repo descriptions** — currently pgvector only indexes code chunks. Embed `"{repo_name}: {description}"` as lightweight text chunks in `embed_repo` task. "What projects has this developer built?" would then retrieve from descriptions, not just code. Low token cost, high recall improvement for discovery questions.
+
+---
+
 ## Shortcuts to avoid
 
 | Temptation                                  | Why to resist                                                                                                                                                                                                          |

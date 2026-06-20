@@ -18,6 +18,10 @@
   border-left-color: var(--color-grade-a);
 }
 
+.bannerAnalyzing .inner {
+  border-left-color: var(--color-accent);
+}
+
 .iconWrap {
   flex-shrink: 0;
   display: flex;
@@ -29,8 +33,18 @@
   animation: spin 1s linear infinite;
 }
 
+.iconAnalyzing {
+  color: var(--color-accent);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
 }
 
 .iconDone {
@@ -52,6 +66,19 @@
 .doneLabel {
   color: var(--color-grade-a);
   font-weight: var(--font-medium);
+}
+
+.analyzingLabel {
+  color: var(--color-fg-muted);
+}
+
+.ellipsis {
+  animation: blink 1.2s step-start infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
 }
 
 .barTrack {

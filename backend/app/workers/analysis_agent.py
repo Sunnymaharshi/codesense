@@ -3,6 +3,7 @@ Celery task — runs the Phase 4 LangGraph analysis agent for a developer.
 Triggered by on_indexing_complete after repos are indexed and embedded.
 """
 
+import json
 import logging
 
 from sqlalchemy import select
@@ -12,8 +13,23 @@ from app.core.config import settings
 from app.db.sync_session import SyncSessionLocal
 from app.models.profile import Developer, Repo
 from app.workers.celery_app import celery_app
+from app.workers.redis_client import redis_client
 
 logger = logging.getLogger(__name__)
+
+_PROGRESS_CHANNEL = "codesense:progress:{username}"
+
+
+def _make_publish(username: str):
+    channel = _PROGRESS_CHANNEL.format(username=username)
+
+    def _pub(payload: dict) -> None:
+        try:
+            redis_client.publish(channel, json.dumps(payload))
+        except Exception:
+            pass  # never let a Redis hiccup abort the analysis
+
+    return _pub
 
 
 @celery_app.task(bind=True, max_retries=1, default_retry_delay=30)
@@ -56,6 +72,7 @@ def analyse_developer(self, developer_id: int) -> None:
             repos=repos_list,
             github_token=settings.GITHUB_TOKEN,
             groq_api_key=settings.GROQ_API_KEY,
+            publish=_make_publish(username),
         )
     except Exception as exc:
         logger.exception(f"[analyse_developer] agent raised for @{username}: {exc}")

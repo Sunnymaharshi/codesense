@@ -74,11 +74,20 @@ export interface AnalyzeResponse {
 
 /* ─── WebSocket progress ─────────────────────────────────── */
 export interface WsProgressMessage {
-  type: "started" | "progress" | "done" | "error";
-  repos_done: number;
-  repos_total: number;
+  type:
+    | "started"
+    | "progress"
+    | "done"
+    | "error"
+    | "agent_started"
+    | "agent_step"
+    | "agent_done"
+    | "agent_error";
+  repos_done?: number;
+  repos_total?: number;
   repo?: string;
   message?: string;
+  step?: string;
 }
 
 /* ─── AI streaming ───────────────────────────────────────── */

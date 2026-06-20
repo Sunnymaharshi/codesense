@@ -20,5 +20,9 @@ RUN uv venv /venv && \
 # Verify binaries landed correctly — fast fail at build time
 RUN /venv/bin/uvicorn --version && /venv/bin/celery --version
 
+# Pre-download the fastembed model so the first container start doesn't wait for 130MB.
+# The named volume at /root/.cache/fastembed is initialised from this layer on first `make dev`.
+RUN /venv/bin/python -c "from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-small-en-v1.5')"
+
 # No COPY . . — source is volume-mounted for hot reload
 EXPOSE 8000

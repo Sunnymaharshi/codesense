@@ -6,6 +6,7 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 
 export type IndexStatus = "idle" | "pending" | "running" | "done" | "error";
+export type AgentStatus = "idle" | "running" | "done" | "error";
 
 interface ProfileState {
   username: string | null;
@@ -14,6 +15,8 @@ interface ProfileState {
   reposTotal: number;
   jobId: string | null;
   error: string | null;
+  agentStatus: AgentStatus;
+  agentStep: string | null;
 }
 
 interface ProfileActions {
@@ -22,6 +25,7 @@ interface ProfileActions {
   setProgress: (done: number, total: number) => void;
   setJobId: (jobId: string) => void;
   setError: (error: string | null) => void;
+  setAgentStatus: (status: AgentStatus, step?: string | null) => void;
   reset: () => void;
 }
 
@@ -32,6 +36,8 @@ const initialState: ProfileState = {
   reposTotal: 0,
   jobId: null,
   error: null,
+  agentStatus: "idle",
+  agentStep: null,
 };
 
 export const useProfileStore = create<ProfileState & ProfileActions>()(
@@ -52,6 +58,9 @@ export const useProfileStore = create<ProfileState & ProfileActions>()(
 
     setError: (error) =>
       set((s) => { s.error = error; }),
+
+    setAgentStatus: (status, step = null) =>
+      set((s) => { s.agentStatus = status; s.agentStep = step ?? null; }),
 
     reset: () => set((s) => { Object.assign(s, initialState); }),
   })),

@@ -2,8 +2,12 @@
  * useIndexingProgress
  *
  * Opens a WebSocket to /ws/{username} while indexStatus is "pending" or "running".
- * Drives reposDone / reposTotal / indexStatus in the Zustand store.
- * Calls onDone() when the server fires "done" — Profile page uses this to refetch.
+ * Drives reposDone / reposTotal / indexStatus / agentStatus in the Zustand store.
+ *
+ * Lifecycle:
+ *   indexing "done"  → WS stays open, agent events follow
+ *   "agent_done"     → refetch profile (skill_scores now populated), WS closes
+ *   90s timeout      → safety close if no agent events arrive after indexing done
  */
 
 import { useEffect, useRef } from "react";
@@ -17,27 +21,38 @@ const WS_BASE =
 
 interface Options {
   onDone?: () => void;
+  onAgentDone?: () => void;
 }
 
 export function useIndexingProgress(
   username: string | null,
-  { onDone }: Options = {},
+  { onDone, onAgentDone }: Options = {},
 ) {
-  const { indexStatus, setIndexStatus, setProgress, setError } =
+  const { indexStatus, setIndexStatus, setProgress, setError, setAgentStatus } =
     useProfileStore();
   const wsRef = useRef<WebSocket | null>(null);
   const onDoneRef = useRef(onDone);
+  const onAgentDoneRef = useRef(onAgentDone);
+  const agentTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   onDoneRef.current = onDone;
+  onAgentDoneRef.current = onAgentDone;
 
   useEffect(() => {
     if (!username) return;
-    if (indexStatus === "done") return;   // already finished — don't reconnect
+    if (indexStatus === "done") return;
     if (indexStatus === "error") return;
 
     let rafId: number;
     let ws: WebSocket | null = null;
 
-    // Defer until after first paint so the profile skeleton renders immediately
+    const closeWs = () => {
+      if (agentTimeoutRef.current) {
+        clearTimeout(agentTimeoutRef.current);
+        agentTimeoutRef.current = null;
+      }
+      ws?.close();
+    };
+
     rafId = requestAnimationFrame(() => {
       const url = `${WS_BASE}/ws/${encodeURIComponent(username)}`;
       ws = new WebSocket(url);
@@ -57,18 +72,40 @@ export function useIndexingProgress(
 
         switch (msg.type) {
           case "progress":
-            setProgress(msg.repos_done, msg.repos_total);
+            setProgress(msg.repos_done ?? 0, msg.repos_total ?? 0);
             break;
+
           case "done":
-            setProgress(msg.repos_done, msg.repos_total);
+            setProgress(msg.repos_done ?? 0, msg.repos_total ?? 0);
             setIndexStatus("done");
-            ws?.close();
             onDoneRef.current?.();
+            // Keep WS open for agent events — safety close after 90s
+            agentTimeoutRef.current = setTimeout(closeWs, 90_000);
             break;
+
+          case "agent_started":
+            setAgentStatus("running", null);
+            break;
+
+          case "agent_step":
+            setAgentStatus("running", msg.step ?? null);
+            break;
+
+          case "agent_done":
+            setAgentStatus("done");
+            closeWs();
+            onAgentDoneRef.current?.();
+            break;
+
+          case "agent_error":
+            setAgentStatus("error");
+            closeWs();
+            break;
+
           case "error":
             setIndexStatus("error");
             setError(msg.message ?? "Indexing failed");
-            ws?.close();
+            closeWs();
             break;
         }
       };
@@ -85,7 +122,7 @@ export function useIndexingProgress(
 
     return () => {
       cancelAnimationFrame(rafId);
-      ws?.close();
+      closeWs();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username]);

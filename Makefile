@@ -1,65 +1,108 @@
-# ── codesense Makefile ──
-# Usage: make <target>
+# codesense — local development
+#
+# Quickstart:
+#   1. make setup        (first time only — copies .env, installs frontend deps)
+#   2. Edit .env and fill in GITHUB_TOKEN and GROQ_API_KEY
+#   3. make dev          (starts postgres + redis + api + worker in Docker)
+#   4. make migrate      (run once after first `make dev`)
+#   5. make frontend     (start Vite dev server in a second terminal)
+#      Then open http://localhost:5173
 
-.PHONY: dev prod down migrate makemigration test worker logs shell-api shell-db seed build install lock
+COMPOSE      = docker compose -f docker-compose.yml -f docker-compose.dev.yml
+COMPOSE_EXEC = $(COMPOSE) exec
 
-# Start all services with hot reload
+.PHONY: setup dev down migrate frontend restart-worker \
+        logs shell-api shell-db seed build install lock lint format test fresh prod
+
+# ── First-time setup ──────────────────────────────────────────────────────────
+
+setup:
+	@if [ ! -f .env ]; then \
+		cp .env.example .env; \
+		echo "Created .env from .env.example"; \
+		echo "  -> Fill in GITHUB_TOKEN and GROQ_API_KEY then run: make dev"; \
+	else \
+		echo ".env already exists"; \
+	fi
+	cd frontend && npm install
+
+# ── Backend (Docker Compose) ──────────────────────────────────────────────────
+
 dev:
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+	$(COMPOSE) up
 
-# Start without dev overrides
-prod:
-	docker compose -f docker-compose.yml up
-
-# Stop and remove containers
 down:
-	docker compose down
+	$(COMPOSE) down
 
-# Run alembic migrations
+# Wipe volumes and start completely fresh (re-runs migrations from zero)
+fresh:
+	$(COMPOSE) down -v
+	$(COMPOSE) up
+
+# ── Database ──────────────────────────────────────────────────────────────────
+
 migrate:
-	docker compose exec api alembic upgrade head
+	$(COMPOSE_EXEC) api alembic upgrade head
 
-# Create a new migration (usage: make makemigration msg="add snapshot table")
 makemigration:
-	docker compose exec api uv run alembic revision --autogenerate -m "$(msg)"
+	$(COMPOSE_EXEC) api alembic revision --autogenerate -m "$(msg)"
 
-# Run all tests
-test:
-	docker compose exec api uv run pytest tests/ -v
-	cd frontend && npm run test
+# ── Frontend ──────────────────────────────────────────────────────────────────
 
-# Tail logs for a service (usage: make logs service=api)
+# Run in a separate terminal after `make dev`
+frontend:
+	cd frontend && npm run dev
+
+# ── Celery worker ─────────────────────────────────────────────────────────────
+
+# Worker starts automatically with `make dev`.
+# Use this to restart it after changing task code without restarting everything.
+restart-worker:
+	$(COMPOSE) restart worker
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+
+# Usage: make logs          (all services)
+#        make logs service=worker
 logs:
-	docker compose logs -f $(service)
+	$(COMPOSE) logs -f $(service)
 
-# Shell into the api container
+# ── Shells ───────────────────────────────────────────────────────────────────
+
 shell-api:
-	docker compose exec api bash
+	$(COMPOSE_EXEC) api bash
 
-# Connect to Postgres with psql
 shell-db:
-	docker compose exec postgres psql -U codesense -d codesense
+	$(COMPOSE) exec postgres psql -U codesense -d codesense
 
-# Seed sample GitHub profiles
+# ── Data ─────────────────────────────────────────────────────────────────────
+
 seed:
-	docker compose exec api uv run python -m app.scripts.seed
+	$(COMPOSE_EXEC) api uv run python -m app.scripts.seed
 
-# Build fresh (after pyproject.toml changes)
+# ── Build ────────────────────────────────────────────────────────────────────
+
 build:
-	docker compose build --no-cache
+	$(COMPOSE) build --no-cache
 
-# Install/sync deps locally (outside Docker, for IDE support)
+# ── Python (run locally, outside Docker) ────────────────────────────────────
+
 install:
 	cd backend && uv sync
 
-# Update lockfile after changing pyproject.toml
 lock:
 	cd backend && uv lock
 
-# Lint
 lint:
-	docker compose exec api uv run ruff check .
+	$(COMPOSE_EXEC) api uv run ruff check .
 
-# Format
 format:
-	docker compose exec api uv run ruff format .
+	$(COMPOSE_EXEC) api uv run ruff format .
+
+test:
+	cd backend && uv run pytest tests/ -v
+
+# ── Production ───────────────────────────────────────────────────────────────
+
+prod:
+	docker compose -f docker-compose.yml up
