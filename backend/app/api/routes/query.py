@@ -5,10 +5,11 @@ Request:  { "username": "torvalds", "question": "when does he ship?" }
 Response: SSE stream of events per the protocol in CLAUDE.md
 """
 
+import asyncio
 import json
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -18,9 +19,27 @@ from app.api.deps import DbSession
 from app.core.config import settings
 from app.models.profile import Developer, Repo
 from app.services.health_score import compute_language_percentages, get_top_language
+from app.workers.redis_client import redis_client
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+_RATE_LIMIT = 20
+_RATE_WINDOW = 60  # seconds
+
+
+async def _check_rate_limit(ip: str) -> bool:
+    """Returns True if allowed. Increments a per-IP counter in Redis."""
+    key = f"codesense:ratelimit:{ip}"
+
+    def _incr():
+        count = redis_client.incr(key)
+        if count == 1:
+            redis_client.expire(key, _RATE_WINDOW)
+        return count
+
+    count = await asyncio.to_thread(_incr)
+    return count <= _RATE_LIMIT
 
 
 class QueryRequest(BaseModel):
@@ -78,7 +97,11 @@ def _build_stats(repos) -> dict:
 
 
 @router.post("/query")
-async def query(body: QueryRequest, db: DbSession) -> StreamingResponse:
+async def query(body: QueryRequest, db: DbSession, request: Request) -> StreamingResponse:
+    ip = request.client.host if request.client else "unknown"
+    if not await _check_rate_limit(ip):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded — 20 requests per minute")
+
     username = body.username.strip().lower()
     question = body.question.strip()
 

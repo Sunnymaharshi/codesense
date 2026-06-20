@@ -4,6 +4,14 @@ import type {
   ProfileResponse,
 } from "./types";
 
+export interface SnapshotResponse {
+  id: string;
+  taken_at: string;
+  total_repos: number;
+  avg_health_score: number;
+  total_stars: number;
+}
+
 const BASE_URL = import.meta.env.VITE_API_URL ?? "";
 
 class ApiError extends Error {
@@ -66,6 +74,26 @@ export async function compareProfiles(
   user2: string,
 ): Promise<{ left: ProfileResponse; right: ProfileResponse }> {
   return request(`/api/compare/${encodeURIComponent(user1)}/${encodeURIComponent(user2)}`);
+}
+
+/** GET /api/snapshots/:username — list snapshots, newest first */
+export async function listSnapshots(
+  username: string,
+): Promise<{ snapshots: SnapshotResponse[] }> {
+  return request(`/api/snapshots/${encodeURIComponent(username)}`);
+}
+
+/** POST /api/snapshot/:username — save a snapshot now */
+export async function takeSnapshot(username: string): Promise<SnapshotResponse> {
+  return request(`/api/snapshot/${encodeURIComponent(username)}`, { method: "POST" });
+}
+
+/** POST /api/analyze?force=true — force re-index */
+export async function reindexUser(username: string): Promise<AnalyzeResponse> {
+  return request<AnalyzeResponse>("/api/analyze?force=true", {
+    method: "POST",
+    body: JSON.stringify({ github_username: username }),
+  });
 }
 
 export { ApiError };

@@ -13,6 +13,7 @@ import { LanguageBars } from "@/components/profile/LanguageBars";
 import { RepoGrid } from "@/components/profile/RepoGrid";
 import { ContributionStats } from "@/components/profile/ContributionStats";
 import { IndexingProgress } from "@/components/profile/IndexingProgress";
+import { SnapshotHistory } from "@/components/profile/SnapshotHistory";
 import { SnapshotInfo } from "@/components/profile/SnapshotInfo";
 import { CompareEntry } from "@/components/profile/CompareEntry";
 import { ChatPanel } from "@/components/chat/ChatPanel";
@@ -110,6 +111,7 @@ export function Profile() {
                 <div className={styles.sidebar}>
                   <LanguageBars stats={data.stats} />
                   <ContributionStats developer={data.developer} stats={data.stats} />
+                  <SnapshotHistory username={username} />
                 </div>
                 <div className={styles.main}>
                   <RepoGrid repos={data.repos} />

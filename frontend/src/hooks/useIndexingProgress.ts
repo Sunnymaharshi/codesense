@@ -34,51 +34,58 @@ export function useIndexingProgress(
     if (indexStatus === "done") return;   // already finished — don't reconnect
     if (indexStatus === "error") return;
 
-    const url = `${WS_BASE}/ws/${encodeURIComponent(username)}`;
-    const ws = new WebSocket(url);
-    wsRef.current = ws;
+    let rafId: number;
+    let ws: WebSocket | null = null;
 
-    ws.onopen = () => {
-      setIndexStatus("running");
-    };
+    // Defer until after first paint so the profile skeleton renders immediately
+    rafId = requestAnimationFrame(() => {
+      const url = `${WS_BASE}/ws/${encodeURIComponent(username)}`;
+      ws = new WebSocket(url);
+      wsRef.current = ws;
 
-    ws.onmessage = (event: MessageEvent<string>) => {
-      let msg: WsProgressMessage;
-      try {
-        msg = JSON.parse(event.data);
-      } catch {
-        return;
-      }
+      ws.onopen = () => {
+        setIndexStatus("running");
+      };
 
-      switch (msg.type) {
-        case "progress":
-          setProgress(msg.repos_done, msg.repos_total);
-          break;
-        case "done":
-          setProgress(msg.repos_done, msg.repos_total);
-          setIndexStatus("done");
-          ws.close();
-          onDoneRef.current?.();
-          break;
-        case "error":
-          setIndexStatus("error");
-          setError(msg.message ?? "Indexing failed");
-          ws.close();
-          break;
-      }
-    };
+      ws.onmessage = (event: MessageEvent<string>) => {
+        let msg: WsProgressMessage;
+        try {
+          msg = JSON.parse(event.data);
+        } catch {
+          return;
+        }
 
-    ws.onerror = () => {
-      setIndexStatus("error");
-      setError("WebSocket connection failed");
-    };
+        switch (msg.type) {
+          case "progress":
+            setProgress(msg.repos_done, msg.repos_total);
+            break;
+          case "done":
+            setProgress(msg.repos_done, msg.repos_total);
+            setIndexStatus("done");
+            ws?.close();
+            onDoneRef.current?.();
+            break;
+          case "error":
+            setIndexStatus("error");
+            setError(msg.message ?? "Indexing failed");
+            ws?.close();
+            break;
+        }
+      };
 
-    ws.onclose = () => {
-      wsRef.current = null;
-    };
+      ws.onerror = () => {
+        setIndexStatus("error");
+        setError("WebSocket connection failed");
+      };
+
+      ws.onclose = () => {
+        wsRef.current = null;
+      };
+    });
 
     return () => {
-      ws.close();
+      cancelAnimationFrame(rafId);
+      ws?.close();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username]);

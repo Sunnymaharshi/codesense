@@ -4,6 +4,7 @@ import {
   createRouter,
   Outlet,
 } from "@tanstack/react-router";
+import { Admin } from "@/pages/Admin";
 import { Compare } from "@/pages/Compare";
 import { Home } from "@/pages/Home";
 import { Profile } from "@/pages/Profile";
@@ -32,7 +33,13 @@ export const compareRoute = createRoute({
   component: Compare,
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, profileRoute, compareRoute]);
+export const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin",
+  component: Admin,
+});
+
+const routeTree = rootRoute.addChildren([homeRoute, profileRoute, compareRoute, adminRoute]);
 
 export const router = createRouter({ routeTree });
 
