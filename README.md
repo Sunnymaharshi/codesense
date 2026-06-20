@@ -4,21 +4,17 @@
 
 Enter a GitHub username. codesense indexes every public repository, computes a health score for each one, runs a LangGraph analysis agent to build a developer persona, and gives you an AI assistant that answers questions about the developer by reading their actual code — not just their commit graph.
 
-[**How to explain this**](#how-to-explain-this-project) · [**Architecture**](#architecture) · [**Setup**](#local-setup) · [**Why these choices**](#why-these-technical-choices)
-
 ---
 
-## What it does
+## Features
 
 1. **Index** — paste a GitHub username; codesense fans out across every public repo in parallel (Celery), computing a health score (tests, CI, docs, license, activity) for each one with live WebSocket progress
-2. **Profile** — a data-dense profile page: stats row, language breakdown, repo grid sorted by health grade, contribution patterns, snapshot history
+2. **Profile** — a data-dense profile page: stats row, language breakdown, repo grid sorted by health grade, skill radar, contribution heatmap, and snapshot history
 3. **Agent analysis** — after indexing, a 4-node LangGraph agent fetches up to 24 source files, analyses code patterns with pure Python regex, then asks Groq to generate a developer persona and skill scores (Backend / Frontend / DevOps / Testing / AI-ML) — stored once, reused everywhere
 4. **Ask anything** — a chat panel backed by RAG over the developer's actual source code. Retrieves real code chunks via pgvector cosine similarity, streams a response with token-by-token typing effect and contextual thinking steps
-5. **AI decides the UI** — the assistant returns structured JSON `{ type, text, data }`; a frontend component registry maps `type` to a React component and renders it inline — commit heatmap, skill radar, growth timeline, hire recommendation card, or plain text
-6. **Compare** — `/compare/:user1/:user2` puts two developers side-by-side with shared stats comparison and a winner highlight on each metric
+5. **AI-driven UI** — the assistant returns structured JSON `{ type, text, data }`; a frontend component registry maps `type` to a React component and renders it inline — commit heatmap, skill radar, growth timeline, or plain text
+6. **Compare** — `/compare/:user1/:user2` puts two developers side-by-side with a winner highlight on each metric
 7. **Snapshots** — profile state is captured automatically after every index run; snapshot history shows how a developer's stack and health scores have changed over time
-
-![chat panel streaming a skill radar component](docs/demo.gif)
 
 ---
 
@@ -46,7 +42,7 @@ Three independent pipelines sharing one Postgres database:
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
-│  LANGGRAPH AGENT PIPELINE  (async Celery, runs once per dev)    │
+│  LANGGRAPH AGENT PIPELINE  (runs once per developer)            │
 │                                                                 │
 │  analyse_developer (Celery task)                                │
 │    → LangGraph StateGraph.invoke()                              │
@@ -60,7 +56,7 @@ Three independent pipelines sharing one Postgres database:
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
-│  RAG QUERY PIPELINE  (sync per-request, SSE streaming)          │
+│  RAG QUERY PIPELINE  (per-request, SSE streaming)               │
 │                                                                 │
 │  POST /query → embed question (fastembed, local, 384-dim)       │
 │    → pgvector cosine search → top-k CodeChunk rows              │
@@ -70,170 +66,398 @@ Three independent pipelines sharing one Postgres database:
 │    → SSE events: thinking_step → token → component_type         │
 │                  → component_data → done                        │
 │    → LLMCall row written (tokens_in, tokens_out, cost_usd)      │
-│                                                                 │
-│  Frontend: AnimatePresence skeleton → component fill            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
----
+### Agent vs. RAG pipeline
 
-## How to explain this project
+These are two separate systems that run at different times and serve different purposes:
 
-### The one-liner
+|                | LangGraph agent                                              | RAG pipeline                                    |
+|----------------|--------------------------------------------------------------|-------------------------------------------------|
+| When it runs   | Once, after indexing completes                               | On every chat question                          |
+| What it does   | Fetches code → regex analysis → Groq for persona + scores   | Embeds question → pgvector search → Groq stream |
+| Output         | `ai_persona` + `skill_scores` stored in Postgres             | SSE stream → rendered component                 |
+| Token cost     | ~400–600 total per developer                                 | ~3,000–6,000 per query                          |
 
-> "codesense is a GitHub developer profiler with a RAG-powered chat assistant. You give it a username, it indexes every public repo in parallel, runs a LangGraph agent to build a developer persona and skill scores, and then lets you ask questions about the developer — returning structured JSON that the frontend renders as interactive visualisations instead of plain text."
+The agent enriches the context that RAG uses. RAG retrieves relevant code chunks per question; the agent's pre-computed persona and skill scores give the LLM a holistic picture of the developer beyond what any single chunk contains.
 
-### Is it "multi-agent RAG"?
-
-**Honest answer: no.** Be precise here — interviewers will probe this.
-
-It has **one LangGraph agent** (a 4-node `StateGraph`) and **one RAG pipeline**. These are separate systems that run at different times:
-
-| | LangGraph agent | RAG pipeline |
-|---|---|---|
-| When it runs | Once, after indexing completes | On every chat question |
-| What it does | Fetches code → regex analysis → Groq for persona + scores | Embeds question → pgvector search → Groq for response |
-| Output | `ai_persona` + `skill_scores` stored in Postgres | SSE stream → rendered component |
-| Token cost | ~400-600 total per developer | ~3,000-6,000 per query |
-
-The agent enriches the context that RAG uses. RAG retrieves relevant code chunks; the agent's pre-computed persona and skill scores give the LLM a richer picture of the developer beyond what's in any single chunk.
-
-"Multi-agent" means multiple agents collaborating or competing — that's not what this is. The safe framing: **"a RAG system with a preprocessing analysis agent."**
+Running the agent at indexing time (not per query) is a deliberate cost and latency decision. Fetching 24 files and running analysis would add 3–5 seconds to every chat response and re-compute things that never change between questions. By doing it once, queries stay under 2 seconds.
 
 ---
 
-### Complete flow — what actually happens
+## Data flow
 
-#### When a user enters a GitHub username
+End-to-end map of every piece of data — where it comes from, what transforms it, where it lands, and what the AI receives.
+
+### 1 — GitHub API → Postgres
+
+`POST /api/analyze` triggers a Celery fan-out. Each `index_single_repo` task makes three GitHub API calls and persists results to two tables.
+
+**GitHub API calls per repo:**
+
+| Call | What it returns |
+|------|-----------------|
+| `GET /repos/:owner/:repo` | name, description, stars, forks, open_issues, topics, created_at, pushed_at, is_fork, is_archived, primary_language |
+| `GET /repos/:owner/:repo/languages` | `{ "Python": 14200, "TypeScript": 3400 }` — byte counts per language |
+| `GET /repos/:owner/:repo/commits?per_page=1` | total commit count via `Link` response header (no body needed) |
+| `GET /repos/:owner/:repo/contents` | directory listing used to detect README, tests/, .github/workflows/, Dockerfile, LICENSE, CONTRIBUTING.md |
+
+**Stored in `developers` table:**
 
 ```
-1.  Home page → POST /api/analyze
-    FastAPI upserts Developer row, creates IndexingJob, returns {job_id} immediately.
-    No blocking — the response is back in ~50ms.
+github_username, display_name, avatar_url, bio, github_url, location, company
+followers, following, public_repos, github_joined_at
+peak_commit_day, commit_frequency_per_week
+ai_persona (TEXT)          ← populated by LangGraph agent later
+skill_scores (JSONB)       ← populated by LangGraph agent later
+index_status, indexed_at
+```
+
+**Stored in `repos` table (one row per repo):**
+
+```
+github_id, name, full_name, description, github_url, homepage_url
+is_fork, is_archived, primary_language
+all_languages (JSONB)      ← { "Python": 14200, "TypeScript": 3400 }
+stars, forks, open_issues, commit_count, watcher_count
+last_commit_at, github_created_at, github_pushed_at
+has_readme, has_tests, has_ci, has_docker, has_license, has_contributing
+health_score (0–100), health_grade (A/B/C)
+topics (JSONB)             ← ["fastapi", "python", "docker"]
+```
+
+**Health score computation (13 signals, weighted):**
+
+```
+has_readme        → +10
+has_tests         → +20
+has_ci            → +20
+has_docker        → +10
+has_license       → +10
+has_contributing  → +5
+stars             → up to +10 (logarithmic)
+commit_count      → up to +10
+recent activity   → up to +5 (days since last push)
+```
+
+---
+
+### 2 — Source files → Code chunks → pgvector
+
+After each repo is indexed, `embed_repo` fetches source files and builds a searchable vector index.
+
+**File selection:** Top source files by extension (`.py`, `.ts`, `.tsx`, `.js`, `.go`, `.rs`, `.java`, etc.), skipping `node_modules`, `dist`, `.git`, lockfiles, and minified files.
+
+**Chunking strategy (`ai/rag/chunker.py`):**
+
+```
+Python           → split on `def ` / `class ` / `async def ` boundaries
+JavaScript/TS    → split on `function`, `const X = (`, `class ` boundaries
+Everything else  → sliding window: 50 lines per chunk, 10-line overlap
+Hard cap         → 1,600 chars (~400 tokens) per chunk; oversized chunks split further
+```
+
+**Embedding:** Each chunk is passed through `fastembed` (`BAAI/bge-small-en-v1.5`) locally on CPU. Output is a 384-dimensional float vector. No API call; runs inside the FastAPI container in ~30–50ms per batch.
+
+**Stored in `code_chunks` table (one row per chunk):**
+
+```
+repo_id           → FK to repos
+file_path         → e.g. "src/auth/middleware.py"
+chunk_index       → position within the file
+content (TEXT)    → raw source code of the chunk
+token_count       → estimated tokens
+embedding         → vector(384) — stored in pgvector column with ivfflat index
+language          → "Python", "TypeScript", etc.
+chunk_type        → "function", "class", "sliding_window"
+```
+
+The `ivfflat` index (migration 002) enables sub-millisecond cosine similarity search across millions of chunks.
+
+---
+
+### 3 — LangGraph agent → Postgres
+
+After indexing completes, `analyse_developer` runs as a Celery task. It is a 4-node LangGraph `StateGraph` that runs once per developer.
+
+**What the agent receives (state input):**
+
+```python
+{
+  "developer_id": int,
+  "repos": [{ name, health_score, stars, primary_language, topics }],   # top 8 by health + stars
+  "code_samples": [{ repo_name, file_path, content }]                   # up to 24 files, 3,000 chars each
+}
+```
+
+**fetch_node** — picks the 8 highest-scoring repos and fetches 3 source files each from GitHub (raw content). If fewer than 5 samples are retrieved on the first pass, a conditional edge triggers a re-fetch with broader file criteria.
+
+**analyse_node** — pure Python regex, zero LLM calls:
+
+```
+type_hint_rate      = parameters_with_type_annotations / total_parameters
+error_handling_rate = try_except_blocks / total_functions
+docstring_rate      = triple_quote_docstrings / total_functions
+test_pattern_rate   = (test_ functions + assert statements) / lines_of_code
+growth_milestones   = repo push dates grouped by year → tech stack per year
+```
+
+**persona_node** — sends ~150 tokens to Groq:
+
+```
+Input:  aggregated stats (type_hint_rate, error_handling_rate, docstring_rate,
+         test_pattern_rate, primary languages, health score distribution)
+Output: 2-3 sentence plain-English developer persona
+```
+
+**score_node** — sends ~150 tokens to Groq:
+
+```
+Input:  same aggregated stats
+Output: { "backend": 75, "frontend": 60, "devops": 80, "testing": 55, "ai_ml": 40 }
+        (heuristic fallback if Groq call fails — task never hard-fails)
+```
+
+**What gets written back to `developers` table:**
+
+```
+ai_persona   = "Backend-focused engineer who prioritises type safety..."
+skill_scores = { backend: 75, frontend: 60, devops: 80, testing: 55, ai_ml: 40 }
+```
+
+Raw source code never leaves the server. Only the computed scalar stats (~400–600 tokens total per developer) are sent to Groq.
+
+---
+
+### 4 — Chat question → RAG prompt → Groq → SSE → frontend
+
+Every chat question goes through a fixed pipeline: embed → retrieve → build prompt → stream.
+
+**Step 1 — embed the question**
+
+```
+question string → fastembed (local CPU) → 384-dim vector   (~30–50ms, no API call)
+```
+
+**Step 2 — pgvector retrieval**
+
+```sql
+SELECT content, file_path, repo_id
+FROM code_chunks
+ORDER BY embedding <=> $question_vector
+WHERE 1 - (embedding <=> $question_vector) > 0.3   -- cosine similarity floor
+LIMIT 8
+```
+
+Returns up to 8 code chunks whose content is semantically closest to the question.
+
+**Step 3 — prompt construction**
+
+```
+SYSTEM_PROMPT
+└── instructs the model to return structured JSON { type, text, data }
+    and lists all component types with their exact data shapes
+
+developer_context block (built from DB):
+  Username, display_name, bio
+  AI Persona (pre-computed by agent)         ← empty until agent runs
+  AI Skill Scores (pre-computed by agent)    ← empty until agent runs
+  total_repos, total_stars, total_commits, avg_health_score
+  repos_with_tests / repos_with_ci counts
+  peak_commit_day, commit_frequency_per_week
+  language breakdown (top 6 languages with %)
+  top 10 repos by health score:
+    name | language | grade | score | stars | commits | [tests, CI, Docker, license]
+
+code_context block:
+  up to 8 retrieved chunks, each with repo name, file path, and raw content
+
+Question: {user_question}
+```
+
+Total tokens sent to Groq: ~3,000–6,000 per query.
+
+**Step 4 — Groq streaming**
+
+```
+AsyncOpenAI(base_url="https://api.groq.com/openai/v1")
+  model: llama-3.3-70b-versatile
+  stream: true
+```
+
+The model streams back a single JSON object (character by character). The pipeline buffers tokens and emits SSE events in parallel:
+
+```
+event: thinking_step   data: { "message": "Retrieving relevant code…", "done": false }
+event: thinking_step   data: { "message": "Analyzing patterns…", "done": true }
+event: token           data: { "char": "T" }
+event: token           data: { "char": "h" }
+...  (full response accumulated)
+event: component_type  data: { "type": "skill_radar" }
+event: component_data  data: { "axes": [...], "summary": "..." }
+event: done            data: {}
+```
+
+**Step 5 — frontend rendering**
+
+```
+fetch() + ReadableStream parses SSE events
+  → thinking_step: ThinkingSteps component updates
+  → token: rawText accumulates (not shown — it's JSON)
+  → component_type: registry.ts looks up React.lazy(component)
+  → component_data: component receives data prop and renders
+  → done: isStreaming = false, final state locked
+```
+
+**Step 6 — cost tracking**
+
+A `LLMCall` row is written after every Groq response:
+
+```
+model, prompt_tokens, completion_tokens, total_tokens
+cost_usd, duration_ms, endpoint ("/api/query"), created_at
+```
+
+Aggregated stats are exposed at `GET /api/admin/stats`.
+
+---
+
+### Database schema at a glance
+
+```
+developers
+  ├── repos (developer_id FK)
+  │     └── code_chunks (repo_id FK)  ← vector(384) embedding column
+  ├── indexing_jobs (developer_id FK)
+  └── profile_snapshots (developer_id FK)
+
+llm_calls  (standalone — no FK)
+```
+
+`profile_snapshots.snapshot_data` stores the full profile JSON at the moment of capture — total repos, stars, language breakdown, health grade distribution, and all repo rows. Comparing snapshots over time shows how a developer's stack and quality signals have changed.
+
+---
+
+## How it works
+
+### Indexing a developer
+
+```
+1.  POST /api/analyze
+    FastAPI upserts Developer row, creates IndexingJob, returns {job_id} immediately (~50ms).
+    Frontend opens WebSocket to /ws/{username}.
 
 2.  Celery enqueues index_developer(developer_id, job_id).
-    Frontend opens WebSocket to /ws/{username} and waits.
 
 3.  index_developer (Celery worker):
-    → fetches all public repos from GitHub API (one paginated call)
+    → fetches all public repos from GitHub API (paginated)
     → builds celery.group — one index_single_repo task per repo
     → registers on_indexing_complete as the chord callback
     → group dispatches; all repo tasks run in parallel
 
-4.  Each index_single_repo (running concurrently, one per repo):
+4.  Each index_single_repo (concurrent, one per repo):
     → GitHub API: GET /repos/:owner/:repo/languages
-    → GitHub API: GET /repos/:owner/:repo/commits?per_page=1 (commit count via header)
+    → GitHub API: GET /repos/:owner/:repo/commits?per_page=1 (commit count via Link header)
     → GitHub API: GET /repos/:owner/:repo/contents (check README, tests, CI, Docker, license)
     → compute_health_score() → A/B/C/D/F grade (13 signals, weighted)
     → upsert Repo row in Postgres
     → redis.publish("codesense:progress:{username}", {repos_done, repos_total})
 
-5.  Redis pub/sub → WebSocket handler → frontend progress bar updates in real time.
+5.  Redis pub/sub → WebSocket handler → frontend progress bar updates live.
 
 6.  on_indexing_complete (chord callback, fires when all repo tasks finish):
     → marks IndexingJob done, updates developer.indexed_at
-    → saves ProfileSnapshot (repo stats frozen in time)
+    → saves ProfileSnapshot (stats frozen in time)
     → enqueues analyse_developer.delay(developer_id)
     → redis.publish({type: "done"})
 
-7.  Frontend receives "done" — WebSocket stays open waiting for agent events.
-
-8.  analyse_developer (Celery worker — Phase 4 LangGraph agent):
+7.  analyse_developer (Celery — LangGraph agent):
     → LangGraph StateGraph.stream(stream_mode="updates")
 
     ├─ fetch_node:
-    │    picks top repos by health score and star count (max 8 repos)
+    │    picks top repos by health score + star count (max 8 repos)
     │    fetches 3 source files per repo from GitHub (max 3,000 chars each)
-    │    conditional edge: if < 5 samples and first attempt → re-fetch with broader criteria
-    │    publishes: {type:"agent_step", step:"fetch", message:"Fetched 12 code samples"}
+    │    conditional edge: if < 5 samples on first attempt → re-fetch with broader criteria
 
     ├─ analyse_node (pure Python, zero LLM calls):
-    │    type_hint_rate  — regex: count parameters with `: type` annotations
-    │    error_handling_rate — count try/except blocks
-    │    docstring_rate  — count triple-quote docstrings
-    │    test_pattern_rate — count test_ functions and assert statements
-    │    compute_growth() — milestones by year from repo push dates
-    │    publishes: {type:"agent_step", step:"analyse"}
+    │    type_hint_rate     — regex: parameters with `: type` annotations
+    │    error_handling_rate — try/except block count
+    │    docstring_rate     — triple-quote docstrings
+    │    test_pattern_rate  — test_ functions and assert statements
+    │    compute_growth()   — milestones by year from repo push dates
 
     ├─ persona_node:
     │    sends aggregated stats (~150 tokens) to Groq
-    │    gets back 2-3 sentence developer persona
-    │    publishes: {type:"agent_step", step:"persona"}
+    │    returns 2-3 sentence developer persona
 
     └─ score_node:
-         sends stats to Groq, gets {backend:75, frontend:60, devops:80, testing:55, ai_ml:40}
-         heuristic fallback if Groq call fails (task never hard-fails)
-         publishes: {type:"agent_step", step:"score"}
+         sends stats to Groq → {backend:75, frontend:60, devops:80, testing:55, ai_ml:40}
+         heuristic fallback if Groq call fails
 
     → saves developer.ai_persona + developer.skill_scores to Postgres
-    → publishes: {type:"agent_done"}
+    → publishes {type:"agent_done"}
 
-9.  Frontend receives "agent_done":
-    → WebSocket closes
+8.  Frontend receives "agent_done":
     → profile refetches → "AI analyzed" badge appears
     → IndexingProgress banner shows "Indexed N repos · AI analyzed" then fades
 ```
 
-#### When a user asks a question in chat
+### Answering a chat question
 
 ```
-1.  User types question → POST /api/query {username, question}
+1.  POST /api/query {username, question}
+    Rate limit: Redis INCR with 60s TTL — > 20 req/min → 429.
 
-2.  Rate limit check:
-    Redis INCR "codesense:ratelimit:{ip}" with 60s TTL
-    > 20 requests/min → 429 Too Many Requests
+2.  Load Developer from Postgres (including ai_persona, skill_scores).
 
-3.  Load Developer from Postgres (including ai_persona, skill_scores).
-
-4.  Embed the question locally:
+3.  Embed the question locally:
     fastembed BAAI/bge-small-en-v1.5 → 384-dim vector
-    Runs on CPU inside the FastAPI container — no API call, ~30-50ms.
+    CPU-only inside the FastAPI container — no API call, ~30–50ms.
 
-5.  pgvector cosine search:
+4.  pgvector cosine search:
     SELECT * FROM code_chunks
     ORDER BY embedding <=> $question_vector
     WHERE 1 - (embedding <=> $question_vector) > 0.3
     LIMIT 8
 
-6.  Build prompt:
+5.  Build prompt:
     SYSTEM_PROMPT
     + build_developer_context(developer)  ← injects ai_persona + skill_scores
     + top-8 retrieved code chunks (with repo/file context)
     + "Question: {question}"
 
-7.  AsyncOpenAI(base_url="https://api.groq.com/openai/v1")
+6.  AsyncOpenAI(base_url="https://api.groq.com/openai/v1")
     .chat.completions.create(model="llama-3.3-70b-versatile", stream=True)
 
-8.  Stream parsing and SSE emission:
-    → yield: event:thinking_step  data:{message:"Retrieving relevant code…", done:false}
-    → yield: event:thinking_step  data:{message:"Analyzing patterns…", done:true}
-    → yield: event:token          data:{char:"T"}  (character by character)
-    → ... (full response builds up)
+7.  Stream parsing and SSE emission:
+    → event:thinking_step  data:{message:"Retrieving relevant code…", done:false}
+    → event:thinking_step  data:{message:"Analyzing patterns…", done:true}
+    → event:token          data:{char:"T"}  (character by character)
     → final chunk: parse JSON {type, text, data}
-    → yield: event:component_type data:{type:"skill_radar"}
-    → yield: event:component_data data:{backend:75, frontend:60, ...}
-    → yield: event:done           data:{}
+    → event:component_type data:{type:"skill_radar"}
+    → event:component_data data:{backend:75, frontend:60, ...}
+    → event:done           data:{}
     → write LLMCall row (tokens_in, tokens_out, cost_usd, duration_ms)
 
-9.  Frontend reads via fetch() + ReadableStream (NOT EventSource — can't POST with EventSource).
-    ThinkingSteps component renders during processing.
-    Tokens stream with typing effect via character-by-character state updates.
-    On component_type: registry.ts maps type → React.lazy(component)
-    On component_data: component renders with live data
+8.  Frontend reads via fetch() + ReadableStream (not EventSource — EventSource can't POST).
+    ThinkingSteps render during processing.
+    On component_type: registry.ts maps type → React.lazy(component).
+    On component_data: component renders with live data.
 ```
 
----
+RAG grounds every response in actual code from the developer's repos. The system prompt instructs the LLM to base its answer only on retrieved chunks and developer stats. All measurements (type hint rate, error handling rate, etc.) come from pure Python regex — the LLM only handles natural language generation from verified data, never the analysis itself. Thinking steps are surfaced in the UI to make the retrieval process transparent.
 
-### The AI-decides-UI pattern
+### AI-driven UI
 
-This is the most architecturally interesting part and worth explaining clearly.
+The LLM returns structured JSON rather than plain text:
 
-The LLM doesn't just return text. The system prompt instructs it to return structured JSON:
 ```json
 { "type": "skill_radar", "text": "Here are their skill scores...", "data": { "backend": 75, "frontend": 60 } }
 ```
 
-`registry.ts` on the frontend maps `type` → `React.lazy(component)`:
+`registry.ts` maps `type` → `React.lazy(component)`:
+
 ```typescript
 const registry = {
   skill_radar:        React.lazy(() => import("../ai-components/SkillRadar")),
@@ -243,95 +467,49 @@ const registry = {
 }
 ```
 
-The AI decides which component to render based on what the question is asking for. "Show me their skill breakdown" → `skill_radar`. "Should I hire them?" → `hire_recommendation`. "How active are they?" → `commit_heatmap`. The user never picks a chart type — the LLM does.
-
-This is the same pattern Claude.ai uses for artifacts. It separates the intelligence (what to show) from the presentation (how to render it).
+The model selects which component to render based on the question. "Show me their skill breakdown" → `skill_radar`. "How active are they?" → `commit_heatmap`. The user never picks a chart type. Adding a new component type requires three steps: add the type literal to `AIMessage` in `backend/app/ai/schemas/output.py`, build the React component, and register it in `registry.ts`.
 
 ---
 
-### Questions interviewers will ask
+## Design decisions
 
-**"How does the RAG actually work?"**
+- **fastembed over OpenAI embeddings** — runs locally on CPU, zero cost, zero API key. `BAAI/bge-small-en-v1.5` produces 384-dim vectors, downloads once (~130MB), and is sufficient at this data scale. Embedding at query time costs ~30–50ms with no network round-trip.
 
-Retrieval-Augmented Generation: instead of asking the LLM about a developer from its training data (which it doesn't have), we retrieve actual chunks of their code and inject them into the prompt. The LLM reasons over real evidence. The retrieval step is a semantic vector search — the question is embedded into the same 384-dim space as the code chunks, and we return the 8 closest chunks by cosine similarity.
+- **Groq over Anthropic/OpenAI for generation** — free tier (14,400 req/day) is usable for a public demo; OpenAI-compatible API means swapping providers is a one-line change. The agent sends ~400–600 tokens per developer (aggregated stats only — raw code never leaves the server). Each RAG query sends ~3,000–6,000 tokens, costing under $0.005 at paid rates.
 
-**"What's the difference between the LangGraph agent and the RAG pipeline?"**
+- **pgvector over Pinecone** — keeps everything in Postgres; same Alembic migrations, same connection pool, no additional service to operate.
 
-The agent runs once at indexing time — it does offline analysis. Pure Python regex computes code quality signals (no LLM involvement), then two small Groq calls generate a persona and skill scores from those signals. These are stored in the database.
+- **Agent at indexing time, not per query** — code pattern analysis and skill scoring run once in a background Celery task. The RAG pipeline reuses pre-computed results from the DB. This keeps query latency under 2 seconds and eliminates redundant computation.
 
-The RAG pipeline runs per question at query time — it retrieves relevant chunks and generates a response. The pre-computed persona and skill scores are injected into the RAG prompt as developer context, so the LLM has both specific code evidence (retrieved chunks) and a holistic picture (agent's analysis) when forming an answer.
+- **Celery fan-out + Redis pub/sub + WebSocket** — indexing 50+ repos in parallel with live per-repo progress, rather than polling a status endpoint. `CORSMiddleware` in FastAPI does not cover WebSocket upgrades — `/ws/{username}` manually validates the `Origin` header before calling `websocket.accept()`.
 
-**"Why run the agent at indexing time and not per query?"**
+- **CSS Modules over Tailwind** — full design control, zero runtime cost, one scoped stylesheet per component. SVG charts are built by hand with d3 for math; no Recharts or Chart.js.
 
-Cost and latency. Fetching 24 files and running analysis would add 3-5 seconds to every chat response and would re-compute things that don't change between questions. By doing it once, queries stay under 2 seconds and the cost stays near zero per query.
-
-**"How much does this cost to run?"**
-
-Near zero. Embeddings are local (fastembed on CPU — no API cost). Groq has a free tier of 14,400 requests/day. The agent sends ~400-600 tokens total per developer (stats only — raw code never leaves the server). Each RAG query sends ~3,000-6,000 tokens. At Groq's paid rates that's under $0.005 per query.
-
-**"How does it handle hallucination?"**
-
-RAG grounds responses in actual code from the developer's repos. The system prompt instructs the LLM to base its answer only on the retrieved chunks and developer stats, not general knowledge. The LangGraph agent uses pure Python regex for all measurements — there's no LLM involved in the analysis phase, only in the natural language generation step, where it's summarising verified data. Thinking steps are surfaced to the user to make the retrieval process transparent.
-
-**"What would you improve?"**
-
-Three concrete things: (1) Add source metadata (`repo_name`, `file_path`) above each retrieved chunk so the LLM can cite specific files instead of saying "their code." (2) Use a gevent worker pool for Celery — GitHub API calls are IO-bound, so switching from 4 prefork processes to 50 gevent coroutines would cut indexing time by ~8×. (3) Build the `CodePattern` component — `shiki` syntax highlighting is already installed, it just needs wiring to a frontend component and a prompt update.
-
-**"How does the WebSocket work with CORS?"**
-
-`CORSMiddleware` in FastAPI/Starlette only applies to HTTP requests — it doesn't cover WebSocket upgrade requests. The `/ws/{username}` endpoint manually reads the `Origin` header and validates it against `CORS_ORIGINS` before calling `websocket.accept()`. If the origin isn't in the allowlist, it closes with a 403.
-
----
-
-## What's been built
-
-### Phase 1 — Foundation
-Data flows end to end. GitHub username in → profile page out. FastAPI, SQLAlchemy async, Alembic, pgvector schema, React + Vite SPA, health score algorithm (13 signals → A/B/C grade), language breakdown, repo grid.
-
-### Phase 2 — Real-time indexing
-Background fan-out with `celery.group` — one Celery task per repo, all parallel. Redis pub/sub bridges progress events to a WebSocket. Frontend shows live progress bar as repos index. One real fix along the way: `CORSMiddleware` doesn't cover WebSocket upgrades — `/ws/{username}` manually validates the Origin header.
-
-### Phase 3 — RAG assistant + streaming components
-Local embeddings via `fastembed` (no API key, runs on CPU). Code files chunked by function/class boundary, vectors stored in pgvector. `/query` SSE endpoint streams `thinking_step` → `token` → `component_type` → `component_data` → `done` events. Frontend component registry renders whichever of 7 component types the LLM returns. Rate limited at 20 req/min per IP via Redis.
-
-### Phase 4 — LangGraph analysis agent
-4-node `StateGraph`: fetch → analyse → persona → score. All nodes are sync (`def`, not `async def`) — runs inside Celery via `graph.invoke()`. Code pattern analysis (type hint rate, error handling rate, docstring rate, test pattern rate) is pure Python regex — zero tokens sent to Groq. Only aggregated stats (~400-600 tokens total) go to the LLM for persona generation and skill scoring. Results stored once per developer, surfaced into every subsequent RAG prompt.
-
-### Phase 5 — Observability + performance
-Structured JSON access logging (`method`, `path`, `status`, `duration_ms`) via Starlette middleware. `LLMCall` table records every Groq call (model, tokens_in, tokens_out, cost_usd, duration_ms). `/admin` dashboard with total cost, 24h stats, p95 latency, last 50 calls. Sentry init (production only, behind `SENTRY_DSN_BACKEND`). `React.lazy()` for all AI components. Preconnect hints for image hosts. OG meta tags per profile.
-
-### Phase 6 — Compare + snapshots
-`/compare/:user1/:user2` — side-by-side stats with winner highlight on each metric. Auto-snapshot after every index run; staleness check on `/analyze` skips re-indexing if `indexed_at` < 1 hour old (`?force=true` to bypass). Snapshot history renders in the profile sidebar.
-
----
-
-## Why these technical choices
-
-- **fastembed over OpenAI embeddings** — runs locally on CPU, zero cost, zero API key. `BAAI/bge-small-en-v1.5` produces 384-dim vectors, downloads once (~130MB) to `~/.cache/fastembed/`, and is more than sufficient at this data scale.
-- **Groq over Anthropic/OpenAI for generation** — free tier (14,400 req/day) is genuinely usable for a public demo; OpenAI-compatible API means swapping providers later is a one-line change; LPU inference is fast enough that the typing effect looks real.
-- **pgvector over Pinecone** — keeps everything in Postgres, no extra service, same Alembic migrations, same connection pool.
-- **LangGraph agent runs once at indexing, not per query** — code pattern analysis and skill scoring happen in a background Celery task after indexing completes. The RAG pipeline reuses pre-computed `ai_persona` + `skill_scores` from the DB; it never re-derives them on each chat question.
-- **The AI decides what UI to render** — the LLM returns `{ type, text, data }`; a frontend registry maps `type` → React component. This is the same architectural pattern Claude.ai uses for artifacts. The AI drives the UI, not the user.
-- **CSS Modules over Tailwind** — full design control, zero runtime cost, one scoped stylesheet per component.
-- **Celery fan-out + Redis pub/sub + WebSocket instead of polling** — indexing 50+ repos in parallel and pushing live granular progress, rather than the frontend polling a status endpoint every few seconds.
 - **uv over pip** — 10–100× faster installs, lockfile via `uv.lock`. Docker builds go from minutes to seconds.
 
 Full decision log: [`CLAUDE.md`](./CLAUDE.md).
 
 ---
 
-## Performance
+## What's been built
 
-Lighthouse scores on `/u/:username`, before and after optimisation work:
+**Phase 1 — Foundation**
+Data flows end to end. GitHub username in → profile page out. FastAPI, SQLAlchemy async, Alembic, pgvector schema, React + Vite SPA, health score algorithm (13 signals → A/B/C grade), language breakdown, repo grid.
 
-| | Before | After |
-|---|---|---|
-| Performance | _TODO_ | _TODO_ |
-| Accessibility | _TODO_ | _TODO_ |
-| Best Practices | _TODO_ | _TODO_ |
-| SEO | _TODO_ | _TODO_ |
+**Phase 2 — Real-time indexing**
+Background fan-out with `celery.group` — one Celery task per repo, all parallel. Redis pub/sub bridges progress events to a WebSocket. Frontend shows a live progress bar as repos index.
 
-Optimisations already in place: all AI components code-split via `React.lazy()`, lazy-loaded avatar images with explicit dimensions to prevent layout shift, preconnect hints for image hosts, OG meta tags injected per-profile. Run Lighthouse on a deployed URL and fill in the numbers.
+**Phase 3 — RAG assistant + streaming components**
+Local embeddings via `fastembed` (CPU, no API key). Code files chunked by function/class boundary, vectors stored in pgvector. `/query` SSE endpoint streams `thinking_step → token → component_type → component_data → done`. Frontend component registry renders whichever of 7 component types the LLM returns. Rate limited at 20 req/min per IP via Redis.
+
+**Phase 4 — LangGraph analysis agent**
+4-node `StateGraph`: fetch → analyse → persona → score. All nodes are sync (`def`, not `async def`) — runs inside Celery via `graph.invoke()`. Code pattern analysis is pure Python regex — zero tokens sent to Groq for the analysis phase. Only aggregated stats (~400–600 tokens total) go to the LLM for persona generation and skill scoring. Results stored once per developer, injected into every subsequent RAG prompt.
+
+**Phase 5 — Observability + performance**
+Structured JSON access logging (`method`, `path`, `status`, `duration_ms`) via Starlette middleware. `LLMCall` table records every Groq call (model, tokens_in, tokens_out, cost_usd, duration_ms). `/admin` dashboard with total cost, 24h stats, p95 latency, last 50 calls. Sentry init (production only). `React.lazy()` for all AI components. Preconnect hints for image hosts. OG meta tags per profile.
+
+**Phase 6 — Compare + snapshots**
+`/compare/:user1/:user2` — side-by-side stats with winner highlight on each metric. Auto-snapshot after every index run; staleness check on `/analyze` skips re-indexing if `indexed_at` < 1 hour old (`?force=true` to bypass). Snapshot history renders in the profile sidebar.
 
 ---
 
@@ -344,7 +522,7 @@ git clone <repo-url>
 cd codesense
 
 make setup        # copies .env.example → .env and installs frontend deps (first time only)
-# Edit .env — fill in GITHUB_TOKEN and GROQ_API_KEY (links are in the file)
+# Edit .env — fill in GITHUB_TOKEN and GROQ_API_KEY
 
 make dev          # starts postgres + redis + api + worker in Docker (hot reload)
 make migrate      # run once after first `make dev`
@@ -353,9 +531,9 @@ make migrate      # run once after first `make dev`
 make frontend     # start Vite dev server
 ```
 
-Then open [http://localhost:5173](http://localhost:5173), type a GitHub username, watch it index live, and click **Ask AI**.
+Open [http://localhost:5173](http://localhost:5173), enter a GitHub username, and watch it index live.
 
-### All make targets
+### Make targets
 
 ```
 make setup              first-time: copy .env.example, npm install
@@ -382,9 +560,9 @@ make test               pytest (uses in-memory SQLite, no Docker needed)
 
 ## Stack
 
-**Backend:** FastAPI · SQLAlchemy 2.x async · Alembic · Celery · Redis · PostgreSQL 16 + pgvector · Groq `llama-3.3-70b-versatile` · fastembed `BAAI/bge-small-en-v1.5` (local CPU embeddings) · LangGraph 0.6 · `uv`
+**Backend:** FastAPI · SQLAlchemy 2.x async · Alembic · Celery · Redis · PostgreSQL 16 + pgvector · Groq `llama-3.3-70b-versatile` · fastembed `BAAI/bge-small-en-v1.5` · LangGraph 0.6 · `uv`
 
-**Frontend:** React 18 · Vite 5 · TypeScript · TanStack Router / Query / Virtual · Zustand + immer · Framer Motion · Radix UI · CSS Modules · Lucide · hand-built SVG components (no chart library)
+**Frontend:** React 18 · Vite 5 · TypeScript · TanStack Router / Query · Zustand + immer · Framer Motion · Radix UI · CSS Modules · Lucide · hand-built SVG charts
 
 **Infra:** Docker Compose · GitHub Actions CI
 
@@ -395,7 +573,7 @@ make test               pytest (uses in-memory SQLite, no Docker needed)
 ```
 POST /api/analyze                         submit username, start indexing
 GET  /api/profile/:username               full profile + repos + stats
-GET  /api/profile/:username/agent-trace   skill_scores, ai_persona, LangSmith URL
+GET  /api/profile/:username/agent-trace   skill_scores, ai_persona, agent metadata
 POST /api/query                           RAG question → SSE stream
 GET  /api/compare/:user1/:user2           side-by-side profiles
 POST /api/snapshot/:username              save a snapshot manually
