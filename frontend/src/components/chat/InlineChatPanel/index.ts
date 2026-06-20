@@ -1,0 +1,1 @@
+export { InlineChatPanel } from "./InlineChatPanel";

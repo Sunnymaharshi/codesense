@@ -45,11 +45,15 @@ export function MessageStream({ message }: MessageStreamProps) {
       {/* Thinking steps */}
       <ThinkingSteps steps={thinkingSteps} isStreaming={isStreaming} />
 
-      {/* Streaming text with cursor */}
-      {rawText && !component && (
+      {/* Text — only show after streaming is done and no component was produced */}
+      {rawText && !component && !isStreaming && (
+        <p className={styles.streamingText}>{rawText}</p>
+      )}
+
+      {/* Cursor while generating (rawText is JSON during streaming — never show it) */}
+      {isStreaming && !component && (
         <p className={styles.streamingText}>
-          {rawText}
-          {isStreaming && <span className={styles.cursor} aria-hidden />}
+          <span className={styles.cursor} aria-hidden />
         </p>
       )}
 
@@ -67,6 +71,11 @@ export function MessageStream({ message }: MessageStreamProps) {
             )}
           </motion.div>
         </Suspense>
+      )}
+
+      {/* Fallback: component type not in registry — show the narrative text */}
+      {component && !ComponentToRender && component.text && !isStreaming && (
+        <p className={styles.streamingText}>{component.text}</p>
       )}
 
       {/* Skeleton while waiting for first token */}

@@ -24,6 +24,8 @@ export interface RepoResponse {
   id: string;
   github_id: number;
   name: string;
+  full_name: string;
+  github_url: string | null;
   description: string | null;
   primary_language: string | null;
   all_languages: Record<string, number> | null;

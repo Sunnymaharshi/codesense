@@ -21,9 +21,10 @@ ComponentType = Literal[
 
 
 class CommitHeatmapData(BaseModel):
-    cells: list[dict]          # [{date, count, intensity: 0-4}]
-    peak_day: str | None
-    total_commits: int
+    cells: list[dict] = []     # [{date, count, intensity: 0-4}] — can be empty; component generates from metadata
+    peak_day: str | None = None
+    total_commits: int = 0
+    commits_per_week: float = 0.0
     weeks: int = 52
 
 

@@ -4,9 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, ArrowRight, AlertCircle } from "lucide-react";
 import { analyzeUser } from "@/lib/api";
 import { useProfileStore } from "@/store/profileStore";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import styles from "./Home.module.css";
 
-const EXAMPLES = ["torvalds", "gvanrossum", "antirez", "tj", "sindresorhus"];
+const EXAMPLES = ["sunnymaharshi", "torvalds", "gvanrossum", "antirez", "sindresorhus"];
 
 export function Home() {
   const navigate = useNavigate();
@@ -28,9 +29,18 @@ export function Home() {
       setUsername(clean);
       setJobId(res.job_id);
       setIndexStatus(res.status);
+      // navigate is synchronous in TanStack Router — no await needed,
+      // but setLoading(false) must be called so the spinner clears if
+      // Profile ever unmounts back to Home (error boundary etc.)
+      setLoading(false);
       navigate({ to: "/u/$username", params: { username: clean } });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Something went wrong";
+      const msg =
+        err instanceof Error
+          ? err.name === "AbortError"
+            ? "Request timed out — is the backend running?"
+            : err.message
+          : "Something went wrong";
       setError(msg);
       setLoading(false);
     }
@@ -42,6 +52,9 @@ export function Home() {
 
   return (
     <main className={styles.main}>
+      <div className={styles.topRight}>
+        <ThemeToggle />
+      </div>
       <motion.div
         className={styles.center}
         initial={{ opacity: 0, y: 20 }}
@@ -51,10 +64,10 @@ export function Home() {
         {/* Logo */}
         <div className={styles.logo}>
           <span className={styles.logoText}>codesense</span>
-          <span className={styles.logoCursor} aria-hidden />
+          <span className={styles.logoBadge}>AI-powered</span>
         </div>
 
-        <p className={styles.tagline}>The complete picture of any developer.</p>
+        <p className={styles.tagline}>The complete picture of any GitHub developer.</p>
 
         {/* Search input */}
         <div className={styles.inputWrap}>

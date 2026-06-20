@@ -59,7 +59,8 @@ export function useIndexingProgress(
       wsRef.current = ws;
 
       ws.onopen = () => {
-        setIndexStatus("running");
+        // Don't set status here — wait for actual server messages.
+        // Setting "running" on open caused a false loading banner on every page refresh.
       };
 
       ws.onmessage = (event: MessageEvent<string>) => {
@@ -71,7 +72,12 @@ export function useIndexingProgress(
         }
 
         switch (msg.type) {
+          case "started":
+            setIndexStatus("running");
+            break;
+
           case "progress":
+            setIndexStatus("running");
             setProgress(msg.repos_done ?? 0, msg.repos_total ?? 0);
             break;
 

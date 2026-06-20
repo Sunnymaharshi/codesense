@@ -57,10 +57,17 @@ export async function analyzeUser(
   username: string,
 ): Promise<AnalyzeResponse> {
   const body: AnalyzeRequest = { github_username: username };
-  return request<AnalyzeResponse>("/api/analyze", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), 15_000);
+  try {
+    return await request<AnalyzeResponse>("/api/analyze", {
+      method: "POST",
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(tid);
+  }
 }
 
 /** GET /api/profile/:username — full developer profile */

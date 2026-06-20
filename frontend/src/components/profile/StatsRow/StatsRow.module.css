@@ -14,13 +14,16 @@
   padding: var(--space-4) var(--space-5);
   background: var(--color-bg-subtle);
   border: 1px solid var(--color-border-muted);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
   transition: border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
     background var(--duration-fast) var(--ease-out);
 }
 
 .card:hover {
   border-color: var(--color-border);
+  box-shadow: var(--shadow-md);
   background: var(--color-bg-muted);
 }
 

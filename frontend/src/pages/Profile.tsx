@@ -8,16 +8,14 @@ import { useProfileStore } from "@/store/profileStore";
 import { useIndexingProgress } from "@/hooks/useIndexingProgress";
 import { useProfileMeta } from "@/hooks/useProfileMeta";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
-import { StatsRow } from "@/components/profile/StatsRow";
-import { LanguageBars } from "@/components/profile/LanguageBars";
+import { AIInsightCards } from "@/components/profile/AIInsightCards";
+import { ProfileAIShowcase } from "@/components/profile/ProfileAIShowcase";
 import { RepoGrid } from "@/components/profile/RepoGrid";
-import { ContributionStats } from "@/components/profile/ContributionStats";
 import { IndexingProgress } from "@/components/profile/IndexingProgress";
-import { SnapshotHistory } from "@/components/profile/SnapshotHistory";
 import { SnapshotInfo } from "@/components/profile/SnapshotInfo";
 import { CompareEntry } from "@/components/profile/CompareEntry";
-import { ChatPanel } from "@/components/chat/ChatPanel";
-import { AskAIButton } from "@/components/chat/AskAIButton";
+import { InlineChatPanel } from "@/components/chat/InlineChatPanel";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import {
   ProfileHeaderSkeleton,
   StatsRowSkeleton,
@@ -57,73 +55,102 @@ export function Profile() {
         <div className={styles.navRight}>
           {data && <CompareEntry username={username} />}
           {data?.developer.skill_scores && (
-            <span className={styles.aiAnalyzedBadge} title="AI analysis complete">AI analyzed</span>
+            <span className={styles.aiAnalyzedBadge} title="AI analysis complete">
+              AI analyzed
+            </span>
           )}
-          {data && <AskAIButton />}
-          {data && (
-            <a
-              href={`https://github.com/${username}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.ghLink}
-            >
-              github.com/{username}
-            </a>
-          )}
+          <ThemeToggle />
         </div>
       </nav>
 
-      <div className={styles.container}>
-        <IndexingProgress />
+      <div className={styles.layout}>
+        {/* ── Left: profile content ─────────────────────── */}
+        <div className={styles.profileCol}>
+          <IndexingProgress />
 
-        <AnimatePresence mode="wait">
-          {isLoading && !data && (
-            <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <ProfileHeaderSkeleton />
-              <StatsRowSkeleton />
-              <div style={{ marginTop: "var(--space-8)" }}>
-                <RepoGridSkeleton count={6} />
-              </div>
-            </motion.div>
-          )}
-
-          {isError && !data && (
-            <motion.div key="error" className={styles.errorState} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-              <p className={styles.errorTitle}>Failed to load profile</p>
-              <p className={styles.errorMsg}>{error instanceof Error ? error.message : "Unknown error"}</p>
-              <button className={styles.retryBtn} onClick={() => refetch()}>
-                <RefreshCw size={14} /> Try again
-              </button>
-            </motion.div>
-          )}
-
-          {data && (
-            <motion.div key="profile" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
-              <div className={styles.headerRow}>
-                <ProfileHeader developer={data.developer} />
-                <SnapshotInfo username={username} indexedAt={data.developer.indexed_at} />
-              </div>
-
-              <div className={styles.statsSection}>
-                <StatsRow stats={data.stats} />
-              </div>
-
-              <div className={styles.columns}>
-                <div className={styles.sidebar}>
-                  <LanguageBars stats={data.stats} />
-                  <ContributionStats developer={data.developer} stats={data.stats} />
-                  <SnapshotHistory username={username} />
+          <AnimatePresence mode="wait">
+            {isLoading && !data && (
+              <motion.div
+                key="skeleton"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <ProfileHeaderSkeleton />
+                <StatsRowSkeleton />
+                <div style={{ marginTop: "var(--space-8)" }}>
+                  <RepoGridSkeleton count={6} />
                 </div>
-                <div className={styles.main}>
+              </motion.div>
+            )}
+
+            {isError && !data && (
+              <motion.div
+                key="error"
+                className={styles.errorState}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <p className={styles.errorTitle}>Failed to load profile</p>
+                <p className={styles.errorMsg}>
+                  {error instanceof Error ? error.message : "Unknown error"}
+                </p>
+                <button className={styles.retryBtn} onClick={() => refetch()}>
+                  <RefreshCw size={14} /> Try again
+                </button>
+              </motion.div>
+            )}
+
+            {data && (
+              <motion.div
+                key="profile"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className={styles.headerMeta}>
+                  <SnapshotInfo
+                    username={username}
+                    indexedAt={data.developer.indexed_at}
+                  />
+                </div>
+
+                <ProfileHeader developer={data.developer} stats={data.stats} />
+                <AIInsightCards developer={data.developer} stats={data.stats} />
+                <ProfileAIShowcase
+                  developer={data.developer}
+                  stats={data.stats}
+                  repos={data.repos}
+                />
+
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25, duration: 0.4 }}
+                >
                   <RepoGrid repos={data.repos} />
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-      {data && <ChatPanel username={username} />}
+        {/* ── Right: AI chat — always visible ──────────── */}
+        <aside className={styles.chatCol}>
+          {data ? (
+            <InlineChatPanel username={username} />
+          ) : (
+            <div className={styles.chatPlaceholder}>
+              <div className={styles.chatPlaceholderInner}>
+                <div className={styles.chatPlaceholderIcon}>✦</div>
+                <p className={styles.chatPlaceholderText}>
+                  Loading profile to enable AI chat…
+                </p>
+              </div>
+            </div>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }

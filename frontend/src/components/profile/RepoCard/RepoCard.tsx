@@ -40,12 +40,12 @@ export function RepoCard({ repo, index = 0 }: RepoCardProps) {
       {/* Header */}
       <div className={styles.header}>
         <a
-          href={`https://github.com/${repo.name}`}
+          href={repo.github_url ?? `https://github.com/${repo.full_name}`}
           target="_blank"
           rel="noopener noreferrer"
           className={styles.repoName}
         >
-          {repo.name.split("/").pop() ?? repo.name}
+          {repo.name}
         </a>
         <Badge grade={repo.health_grade} size="sm" />
       </div>

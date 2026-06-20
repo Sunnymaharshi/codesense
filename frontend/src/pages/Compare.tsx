@@ -7,6 +7,7 @@ import { ComparisonHeader } from "@/components/compare/ComparisonHeader";
 import { ComparisonStats } from "@/components/compare/ComparisonStats";
 import { RepoGrid } from "@/components/profile/RepoGrid";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import styles from "./Compare.module.css";
 
 export function Compare() {
@@ -25,6 +26,7 @@ export function Compare() {
           <ArrowLeft size={16} />
           codesense
         </Link>
+        <ThemeToggle />
       </nav>
 
       <div className={styles.container}>
