@@ -8,7 +8,7 @@ Enter a GitHub username. codesense indexes every public repository, computes a h
 
 ## Demo
 
-<video src="https://github.com/user-attachments/assets/9b1f3745-233c-4fd7-81ce-ff4f14f3a0a1"  autoplay loop muted playsinline width="100%"></video>
+![Demo](demo.gif)
 
 ---
 
