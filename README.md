@@ -8,7 +8,7 @@ Enter a GitHub username. codesense indexes every public repository, computes a h
 
 ## Demo
 
-<video src="demo.mp4" controls width="100%"></video>
+<video src="https://github.com/user-attachments/assets/9b1f3745-233c-4fd7-81ce-ff4f14f3a0a1" controls width="100%" loop autoplay></video>
 
 ---
 
@@ -29,23 +29,23 @@ Enter a GitHub username. codesense indexes every public repository, computes a h
 Three independent pipelines sharing one Postgres database:
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  INDEXING PIPELINE  (async — Celery + Redis + WebSocket)        │
-│                                                                 │
-│  POST /analyze → IndexingJob → index_developer (Celery)         │
-│                                     │                           │
+┌──────────────────────────────────────────────────────────────────┐
+│  INDEXING PIPELINE  (async — Celery + Redis + WebSocket)         │
+│                                                                  │
+│  POST /analyze → IndexingJob → index_developer (Celery)          │
+│                                     │                            │
 │                          celery.group (one task per repo)        │
-│                          ├─ index_single_repo (×N, parallel)    │
+│                          ├─ index_single_repo (×N, parallel)     │
 │                          │    → GitHub API: languages, commits,  │
 │                          │      13 signal checks, health score   │
 │                          │    → Postgres: upsert Repo row        │
 │                          │    → Redis PUBLISH progress event     │
 │                          └─ on_indexing_complete (chord callback)│
-│                               → ProfileSnapshot saved           │
-│                               → analyse_developer.delay()       │
-│                                                                 │
-│  WS /ws/:username ◀── Redis pub/sub ◀── progress events        │
-└─────────────────────────────────────────────────────────────────┘
+│                               → ProfileSnapshot saved            │
+│                               → analyse_developer.delay()        │
+│                                                                  │
+│  WS /ws/:username ◀── Redis pub/sub ◀── progress events          │
+└──────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
 │  LANGGRAPH AGENT PIPELINE  (runs once per developer)            │
@@ -79,12 +79,12 @@ Three independent pipelines sharing one Postgres database:
 
 These are two separate systems that run at different times and serve different purposes:
 
-|                | LangGraph agent                                              | RAG pipeline                                    |
-|----------------|--------------------------------------------------------------|-------------------------------------------------|
-| When it runs   | Once, after indexing completes                               | On every chat question                          |
-| What it does   | Fetches code → regex analysis → Groq for persona + scores   | Embeds question → pgvector search → Groq stream |
-| Output         | `ai_persona` + `skill_scores` stored in Postgres             | SSE stream → rendered component                 |
-| Token cost     | ~400–600 total per developer                                 | ~3,000–6,000 per query                          |
+| Dimension    | LangGraph agent                                           | RAG pipeline                                    |
+| ------------ | --------------------------------------------------------- | ----------------------------------------------- |
+| When it runs | Once, after indexing completes                            | On every chat question                          |
+| What it does | Fetches code → regex analysis → Groq for persona + scores | Embeds question → pgvector search → Groq stream |
+| Output       | `ai_persona` + `skill_scores` stored in Postgres          | SSE stream → rendered component                 |
+| Token cost   | ~400–600 total per developer                              | ~3,000–6,000 per query                          |
 
 The agent enriches the context that RAG uses. RAG retrieves relevant code chunks per question; the agent's pre-computed persona and skill scores give the LLM a holistic picture of the developer beyond what any single chunk contains.
 
@@ -102,12 +102,12 @@ End-to-end map of every piece of data — where it comes from, what transforms i
 
 **GitHub API calls per repo:**
 
-| Call | What it returns |
-|------|-----------------|
-| `GET /repos/:owner/:repo` | name, description, stars, forks, open_issues, topics, created_at, pushed_at, is_fork, is_archived, primary_language |
-| `GET /repos/:owner/:repo/languages` | `{ "Python": 14200, "TypeScript": 3400 }` — byte counts per language |
-| `GET /repos/:owner/:repo/commits?per_page=1` | total commit count via `Link` response header (no body needed) |
-| `GET /repos/:owner/:repo/contents` | directory listing used to detect README, tests/, .github/workflows/, Dockerfile, LICENSE, CONTRIBUTING.md |
+| Call                                         | What it returns                                                                                                     |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `GET /repos/:owner/:repo`                    | name, description, stars, forks, open_issues, topics, created_at, pushed_at, is_fork, is_archived, primary_language |
+| `GET /repos/:owner/:repo/languages`          | `{ "Python": 14200, "TypeScript": 3400 }` — byte counts per language                                                |
+| `GET /repos/:owner/:repo/commits?per_page=1` | total commit count via `Link` response header (no body needed)                                                      |
+| `GET /repos/:owner/:repo/contents`           | directory listing used to detect README, tests/, .github/workflows/, Dockerfile, LICENSE, CONTRIBUTING.md           |
 
 **Stored in `developers` table:**
 
@@ -459,18 +459,24 @@ RAG grounds every response in actual code from the developer's repos. The system
 The LLM returns structured JSON rather than plain text:
 
 ```json
-{ "type": "skill_radar", "text": "Here are their skill scores...", "data": { "backend": 75, "frontend": 60 } }
+{
+  "type": "skill_radar",
+  "text": "Here are their skill scores...",
+  "data": { "backend": 75, "frontend": 60 }
+}
 ```
 
 `registry.ts` maps `type` → `React.lazy(component)`:
 
 ```typescript
 const registry = {
-  skill_radar:        React.lazy(() => import("../ai-components/SkillRadar")),
-  commit_heatmap:     React.lazy(() => import("../ai-components/CommitHeatmap")),
-  hire_recommendation: React.lazy(() => import("../ai-components/HireRecommendation")),
+  skill_radar: React.lazy(() => import("../ai-components/SkillRadar")),
+  commit_heatmap: React.lazy(() => import("../ai-components/CommitHeatmap")),
+  hire_recommendation: React.lazy(
+    () => import("../ai-components/HireRecommendation"),
+  ),
   // ...
-}
+};
 ```
 
 The model selects which component to render based on the question. "Show me their skill breakdown" → `skill_radar`. "How active are they?" → `commit_heatmap`. The user never picks a chart type. Adding a new component type requires three steps: add the type literal to `AIMessage` in `backend/app/ai/schemas/output.py`, build the React component, and register it in `registry.ts`.
