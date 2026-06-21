@@ -50,7 +50,7 @@ backend/
       rag/            # Phase 3 straight-line pipeline (retrieve → prompt → stream → parse)
         chunker.py    # splits files by function/class boundary, sliding-window fallback
         embedder.py   # fastembed singleton, lazy-loads BAAI/bge-small-en-v1.5 on first use
-        retriever.py  # pgvector cosine search, top-k=8, min score 0.3
+        retriever.py  # pgvector cosine search, top-k=8, min score 0.15
         pipeline.py   # run_pipeline() — async generator yielding SSE events, called by query.py
         prompts.py    # SYSTEM_PROMPT + build_developer_context() (injects pre-computed ai_persona/skill_scores)
       agent/          # Phase 4 LangGraph agent — runs ONCE during indexing, NOT per chat question
@@ -74,7 +74,7 @@ frontend/src/
     profile/          # ProfileHeader, StatsRow, LanguageBars, RepoCard, RepoGrid, ContributionStats, IndexingProgress, CompareEntry, SnapshotInfo
     compare/          # ComparisonHeader, ComparisonStats
     chat/             # ChatPanel, ThinkingSteps, MessageStream, AskAIButton
-    ai-components/    # CommitHeatmap, SkillRadar, GrowthTimeline, RepoComparison, DeveloperPersona, HireRecommendation, TextMessage
+    ai-components/    # CommitHeatmap, SkillRadar, GrowthTimeline, CodePattern, RepoComparison, DeveloperPersona, HireRecommendation, TextMessage
     ui/               # Badge, Skeleton, Card
   lib/
     registry.ts       # ComponentType → React.lazy component map
@@ -95,7 +95,7 @@ POST /api/analyze
   → Celery: GitHub API fetches all repos
   → celery.group — one index_single_repo task per repo, all parallel
   → each repo: compute health score → save Repo → trigger embed_repo task
-  → embed_repo: fetch files → chunk → fastembed → upsert code_chunks (pgvector)
+  → embed_repo: fetch files → chunk → fastembed → upsert code_chunks (pgvector); also embeds repo description as a lightweight text chunk
   → on_indexing_complete chord: auto-snapshot → Redis PUBLISH progress
   → WS /ws/{username} subscribes to pub/sub → streams events to frontend
 ```
@@ -162,6 +162,8 @@ LLMCall    → standalone cost-tracking table (columns exist, nothing writes to 
 
 **In-progress guard on `/api/analyze`:** If `developer.index_status` is `pending` or `running`, the endpoint returns early (even with `?force=true`) rather than spawning a duplicate Celery fan-out.
 
+**Retriever MIN_SCORE is 0.15, not a higher value:** Natural-language questions embed very differently from code chunks — cosine similarity between "show me their code style" and a Python function is inherently low. 0.3 filtered out almost everything. Do not raise this threshold without testing against real code-style questions first.
+
 ---
 
 ## CSS conventions
@@ -214,7 +216,7 @@ SENTRY_DSN_FRONTEND=
 POST /api/analyze                           # submit username → start indexing (skips if indexed < 1hr; ?force=true to bypass; 409 if already in progress)
 GET  /api/profile/{username}                # full profile data
 GET  /api/profile/{username}/agent-trace    # has_analysis, skill_scores, ai_persona, optional LangSmith trace URL
-GET  /api/compare/{user1}/{user2}           # side-by-side profiles as { left, right }
+GET  /api/compare/{user1}/{user2}           # side-by-side profiles as { left, right, summary } — summary is a Groq-generated 2-sentence comparison
 POST /api/snapshot/{username}               # save a profile snapshot
 GET  /api/snapshots/{username}              # list saved snapshots
 POST /api/query                             # RAG question → SSE stream

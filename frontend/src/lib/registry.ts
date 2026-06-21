@@ -8,6 +8,7 @@ export const REGISTRY = {
   commit_heatmap:      lazy(() => import("@/components/ai-components/CommitHeatmap").then(m => ({ default: m.CommitHeatmap }))),
   skill_radar:         lazy(() => import("@/components/ai-components/SkillRadar").then(m => ({ default: m.SkillRadar }))),
   growth_timeline:     lazy(() => import("@/components/ai-components/GrowthTimeline").then(m => ({ default: m.GrowthTimeline }))),
+  code_pattern:        lazy(() => import("@/components/ai-components/CodePattern").then(m => ({ default: m.CodePattern }))),
   repo_comparison:     lazy(() => import("@/components/ai-components/RepoComparison").then(m => ({ default: m.RepoComparison }))),
   developer_persona:   lazy(() => import("@/components/ai-components/DeveloperPersona").then(m => ({ default: m.DeveloperPersona }))),
   hire_recommendation: lazy(() => import("@/components/ai-components/HireRecommendation").then(m => ({ default: m.HireRecommendation }))),

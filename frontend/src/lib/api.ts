@@ -79,7 +79,7 @@ export async function getProfile(username: string): Promise<ProfileResponse> {
 export async function compareProfiles(
   user1: string,
   user2: string,
-): Promise<{ left: ProfileResponse; right: ProfileResponse }> {
+): Promise<{ left: ProfileResponse; right: ProfileResponse; summary: string }> {
   return request(`/api/compare/${encodeURIComponent(user1)}/${encodeURIComponent(user2)}`);
 }
 

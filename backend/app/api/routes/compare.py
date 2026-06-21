@@ -7,10 +7,14 @@ fetch + stats logic as profile.py — just runs it twice.
 Both usernames must already have been analyzed (POST /analyze)
 before this works — we do NOT auto-trigger indexing here.
 """
+import logging
+
 from fastapi import APIRouter, HTTPException
+from openai import AsyncOpenAI
 from sqlalchemy import select
 
 from app.api.deps import DbSession
+from app.core.config import settings
 from app.models.profile import Developer, IndexStatus, Repo
 from app.schemas.profile import (
     CompareResponse,
@@ -20,6 +24,11 @@ from app.schemas.profile import (
     RepoResponse,
 )
 from app.services.health_score import compute_language_percentages, get_top_language
+
+logger = logging.getLogger(__name__)
+
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+_SUMMARY_MODEL = "llama-3.3-70b-versatile"
 
 router = APIRouter()
 
@@ -89,6 +98,34 @@ async def _load_profile(username: str, db: DbSession) -> ProfileResponse:
     )
 
 
+async def _generate_summary(left: ProfileResponse, right: ProfileResponse) -> str:
+    prompt = (
+        f"Compare these two GitHub developers in exactly 2 sentences. Be specific and direct.\n\n"
+        f"{left.developer.github_username}: {left.stats.total_repos} repos, "
+        f"avg health {left.stats.avg_health_score:.0f}/100, "
+        f"{left.stats.total_stars} stars, "
+        f"primary language {left.stats.primary_language or 'unknown'}, "
+        f"{left.stats.grade_counts.get('A', 0)} A-grade repos.\n"
+        f"{right.developer.github_username}: {right.stats.total_repos} repos, "
+        f"avg health {right.stats.avg_health_score:.0f}/100, "
+        f"{right.stats.total_stars} stars, "
+        f"primary language {right.stats.primary_language or 'unknown'}, "
+        f"{right.stats.grade_counts.get('A', 0)} A-grade repos."
+    )
+    try:
+        client = AsyncOpenAI(api_key=settings.GROQ_API_KEY, base_url=GROQ_BASE_URL)
+        resp = await client.chat.completions.create(
+            model=_SUMMARY_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=120,
+            temperature=0.4,
+        )
+        return resp.choices[0].message.content.strip()
+    except Exception:
+        logger.exception("[compare] summary generation failed")
+        return ""
+
+
 @router.get("/compare/{user1}/{user2}", response_model=CompareResponse)
 async def compare_developers(user1: str, user2: str, db: DbSession) -> CompareResponse:
     if user1.lower().strip() == user2.lower().strip():
@@ -96,5 +133,6 @@ async def compare_developers(user1: str, user2: str, db: DbSession) -> CompareRe
 
     left = await _load_profile(user1, db)
     right = await _load_profile(user2, db)
+    summary = await _generate_summary(left, right)
 
-    return CompareResponse(left=left, right=right)
+    return CompareResponse(left=left, right=right, summary=summary)

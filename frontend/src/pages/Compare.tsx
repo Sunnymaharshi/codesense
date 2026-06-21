@@ -60,6 +60,8 @@ export function Compare() {
             <motion.div key="compare" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
               <ComparisonHeader left={data.left.developer} right={data.right.developer} />
 
+              {data.summary && <p className={styles.summary}>{data.summary}</p>}
+
               <div className={styles.statsSection}>
                 <ComparisonStats
                   left={data.left.stats}

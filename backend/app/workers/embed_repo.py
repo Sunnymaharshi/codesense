@@ -74,6 +74,8 @@ def embed_repo(self, repo_id: str) -> dict:
             logger.error(f"[embed_repo] repo {repo_id} not found")
             return {"ok": False, "reason": "not found"}
         repo_name = repo.name
+        repo_description = repo.description or ""
+        repo_full_name = repo.full_name or repo_name
         owner, name = repo_name.split("/", 1)
 
     try:
@@ -92,6 +94,17 @@ def embed_repo(self, repo_id: str) -> dict:
         return {"ok": True, "chunks": 0}
 
     all_chunks = []
+
+    if repo_description:
+        from app.ai.rag.chunker import CodeChunk as _Chunk
+        desc_text = f"{repo_full_name}: {repo_description}"
+        all_chunks.append(_Chunk(
+            file_path="description",
+            chunk_index=0,
+            content=desc_text,
+            language="text",
+        ))
+
     for file_path, content, language in files:
         if len(content) > MAX_FILE_SIZE:
             content = content[:MAX_FILE_SIZE]

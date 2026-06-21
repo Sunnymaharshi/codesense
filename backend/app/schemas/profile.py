@@ -102,3 +102,4 @@ class ProfileResponse(BaseModel):
 class CompareResponse(BaseModel):
     left: ProfileResponse
     right: ProfileResponse
+    summary: str = ""

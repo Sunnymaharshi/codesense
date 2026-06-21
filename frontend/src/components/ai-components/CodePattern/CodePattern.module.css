@@ -1,0 +1,77 @@
+.wrapper {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  font-size: var(--text-sm);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.filePath {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-fg-subtle);
+}
+
+.lang {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.codeBlock {
+  overflow-x: auto;
+}
+
+/* shiki injects a <pre> with inline background — let it control the bg */
+.shiki :global(pre) {
+  margin: 0;
+  padding: var(--space-4);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  font-family: var(--font-mono);
+}
+
+.fallback {
+  margin: 0;
+  padding: var(--space-4);
+  background: #0d1117;
+  color: #e6edf3;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.insight {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.insightLabel {
+  display: inline-block;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: var(--space-1);
+}
+
+.insightText {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-fg-subtle);
+  line-height: 1.5;
+}

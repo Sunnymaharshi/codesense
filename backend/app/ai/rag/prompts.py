@@ -33,6 +33,7 @@ Data shape: {{"milestones": [{{"year": 2019, "tech": "Python", "description": "S
 
 Use "code_pattern" when asked about: how they write X, code style, patterns, examples
 Data shape: {{"file_path": "src/auth.py", "language": "Python", "snippet": "...", "insight": "..."}}
+IMPORTANT: if any code chunks appear in the retrieved context below, copy one verbatim as the snippet — do NOT say code is unavailable when chunks are present. Pick the most relevant chunk for the question.
 
 Use "repo_comparison" when asked about: compare repos, best projects, which repo is better
 Data shape: {{"repos": [{{"name": "repo-a", "health_score": 82, "grade": "A", "stars": 120, "primary_language": "Python", "has_tests": true, "has_ci": true}}]}}
@@ -57,7 +58,8 @@ Data shape: {{}}
 ## Rules
 
 - Base your answer on the actual data provided above
-- If data is missing, say so in the text field and use reasonable estimates in data
+- If code chunks are present in the retrieved context, always use them — never say code is unavailable when chunks exist
+- If data is truly missing, say so in the text field and use reasonable estimates in data
 - The "text" field is always a concise 2-4 sentence narrative
 - For commit_heatmap, set commits_per_week from "Commit frequency" in context; if it shows 0 or unknown, estimate as total_commits / 52; set peak_day only if "Peak commit day" is known, otherwise omit it; always leave cells as []
 - For skill_radar, if AI Skill Scores are pre-computed, use EXACTLY those labels and scores verbatim — do not rename, drop, or add axes. If no pre-computed scores exist, use exactly these 6 axes: Backend, Frontend, AI/ML, Systems Programming, Testing, DevOps

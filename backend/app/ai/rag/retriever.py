@@ -19,7 +19,7 @@ from ..rag.embedder import embedder
 logger = logging.getLogger(__name__)
 
 TOP_K = 8  # chunks to retrieve per query
-MIN_SCORE = 0.3  # discard chunks below this cosine similarity
+MIN_SCORE = 0.15  # natural-language→code cosine similarity is low; 0.3 filters too aggressively
 
 
 @dataclass

@@ -70,7 +70,7 @@ All of this is built and working:
 
 **Not built from the original Phase 3 scope:**
 
-- `CodePattern` component (shiki + react-diff-view) — skipped, no code currently triggers this component type
+- `CodePattern` component — ✅ now built (`CodePattern.tsx` + shiki highlighting, registered in `registry.ts`). Retriever MIN_SCORE lowered from 0.3 → 0.15 so code chunks actually surface for natural-language questions.
 - LangSmith tracing on every LLM call — `LANGCHAIN_*` env vars exist but nothing actually calls LangSmith yet
 - Rate limiting on `/query` (20 req/min per IP via Redis) — not implemented, flagged as an open risk for a public deploy
 
@@ -180,15 +180,11 @@ Items flagged after full-project review. Ordered by impact-to-effort ratio.
 
 ### Medium (2-4 hours each)
 
-- [ ] **`CodePattern` AI component** — `shiki` and `react-diff-view` are already installed in `package.json` but unused. The `code_pattern` type exists in `AIMessage` (`output.py`) but is not in `registry.ts`. Build `frontend/src/components/ai-components/CodePattern/` and register it. This is the most natural chat response: "how do they handle errors?" → renders a highlighted code block from their actual repo.
-  - Backend: update `prompts.py` to ask the LLM to return `code_pattern` when showing code examples
-  - Frontend: `CodePattern.tsx` — shiki `codeToHtml()` on the `data.code` field, language from `data.language`
+- [x] **`CodePattern` AI component** — built. `frontend/src/components/ai-components/CodePattern/` with shiki `codeToHtml()` async highlighting, fallback `<pre>` while loading. Registered in `registry.ts`. Retriever MIN_SCORE lowered 0.3 → 0.15 so natural-language code questions actually retrieve chunks. System prompt updated to instruct the LLM to copy retrieved snippets verbatim rather than saying code is unavailable.
 
-- [ ] **AI-powered compare summary** — after loading both profiles in `compare.py`, make one Groq call (~300 tokens) to generate a 2-sentence natural language comparison. Return it as `summary: string` in `CompareResponse`. Render it at the top of `Compare.tsx` above the side-by-side stats. This is the feature that makes someone share the compare URL.
-  - Backend: add `summary` field to `CompareResponse` in `schemas/profile.py`, generate in `compare.py`
-  - Frontend: render in `ComparisonHeader` with a subtle card below the "vs" divider
+- [x] **AI-powered compare summary** — built. `compare.py` makes one Groq call after loading both profiles; result returned as `summary: str` (defaults `""` on error). `Compare.tsx` renders a summary card between the avatar header and stats bars when non-empty.
 
-- [ ] **Embed repo descriptions** — currently pgvector only indexes code chunks. Embed `"{repo_name}: {description}"` as lightweight text chunks in `embed_repo` task. "What projects has this developer built?" would then retrieve from descriptions, not just code. Low token cost, high recall improvement for discovery questions.
+- [x] **Embed repo descriptions** — built. `embed_repo.py` prepends a `CodeChunk(file_path="description", language="text", content="{full_name}: {description}")` before the code chunks, so description text lands in pgvector alongside code. Existing indexed profiles need a re-index (`?force=true`) to get description chunks.
 
 ---
 
