@@ -1,8 +1,7 @@
 import { motion } from "framer-motion";
-import { Calendar, TrendingUp, BarChart2, Sparkles, Brain } from "lucide-react";
+import { Calendar, TrendingUp, BarChart2, Sparkles } from "lucide-react";
 import type { DeveloperResponse, ProfileStatsResponse, RepoResponse } from "@/lib/types";
 import { CommitHeatmap } from "@/components/ai-components/CommitHeatmap";
-import { DeveloperPersona } from "@/components/ai-components/DeveloperPersona";
 import { GrowthTimeline } from "@/components/ai-components/GrowthTimeline";
 import { RepoComparison } from "@/components/ai-components/RepoComparison";
 import styles from "./ProfileAIShowcase.module.css";
@@ -49,17 +48,6 @@ function buildHeatmapData(developer: DeveloperResponse, stats: ProfileStatsRespo
   };
 }
 
-function buildPersonaData(developer: DeveloperResponse) {
-  const scores = developer.skill_scores!;
-  const sorted = Object.entries(scores).sort(([, a], [, b]) => b - a);
-  const top = sorted[0]?.[0] ?? "Software";
-
-  return {
-    headline: `${top} specialist`,
-    summary: developer.ai_persona!,
-    traits: sorted.map(([label, score]) => ({ label, score })),
-  };
-}
 
 function buildGrowthData(repos: RepoResponse[]) {
   const byYear = new Map<number, RepoResponse[]>();
@@ -149,10 +137,6 @@ export function ProfileAIShowcase({ developer, stats, repos }: Props) {
   const heatmapData = buildHeatmapData(developer, stats);
   const growthData = buildGrowthData(repos);
   const repoCompData = buildRepoComparisonData(repos);
-  const personaData =
-    developer.ai_persona && developer.skill_scores
-      ? buildPersonaData(developer)
-      : null;
 
   const showGrowth = growthData.milestones.length > 1;
 
@@ -161,7 +145,6 @@ export function ProfileAIShowcase({ developer, stats, repos }: Props) {
       <div className={styles.sectionHeader}>
         <Sparkles size={14} className={styles.sectionIcon} />
         <span className={styles.sectionLabel}>Developer Insights</span>
-        {personaData && <span className={styles.aiPill}>AI analyzed</span>}
       </div>
 
       {/* Commit heatmap — full width */}
@@ -169,19 +152,9 @@ export function ProfileAIShowcase({ developer, stats, repos }: Props) {
         <CommitHeatmap data={heatmapData} />
       </CardWrap>
 
-      {/* Middle row: persona (if AI ran) + top repos */}
+      {/* Top repos — full width */}
       <div className={styles.row}>
-        {personaData && (
-          <CardWrap icon={Brain} title="Developer Persona" delay={0.1}>
-            <DeveloperPersona data={personaData} />
-          </CardWrap>
-        )}
-        <CardWrap
-          icon={BarChart2}
-          title="Top Repositories"
-          delay={0.15}
-          fullWidth={!personaData}
-        >
+        <CardWrap icon={BarChart2} title="Top Repositories" delay={0.1} fullWidth>
           <RepoComparison data={repoCompData} />
         </CardWrap>
       </div>

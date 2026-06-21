@@ -21,11 +21,12 @@ export function InlineChatPanel({ username }: Props) {
   const [input, setInput] = useState("");
   const { messages, isStreaming } = useChatStore();
   const { sendMessage, abort } = useChat(username);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = messagesRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages.length, isStreaming]);
 
   async function handleSend() {
@@ -64,7 +65,7 @@ export function InlineChatPanel({ username }: Props) {
       </div>
 
       {/* Messages / Empty state */}
-      <div className={styles.messages}>
+      <div ref={messagesRef} className={styles.messages}>
         <AnimatePresence mode="popLayout">
           {!hasMessages && (
             <motion.div
@@ -102,8 +103,6 @@ export function InlineChatPanel({ username }: Props) {
             </motion.div>
           ))}
         </AnimatePresence>
-
-        <div ref={bottomRef} />
       </div>
 
       {/* Input */}

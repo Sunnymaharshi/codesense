@@ -12,8 +12,11 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 from redis import asyncio as aioredis
+from sqlalchemy import select
 
 from app.core.config import settings
+from app.db.session import AsyncSessionLocal
+from app.models.profile import Developer, IndexStatus
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -44,6 +47,26 @@ async def ws_progress(websocket: WebSocket, username: str) -> None:
     await websocket.accept()
     channel = PROGRESS_CHANNEL.format(username=username.lower())
     logger.info(f"[ws] accepted connection for @{username}, channel={channel}")
+
+    # Catch the race where "done" was published before we subscribed.
+    # Send current DB state immediately so the frontend doesn't wait forever.
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(Developer).where(Developer.github_username == username.lower())
+        )
+        developer = result.scalar_one_or_none()
+        if developer and developer.index_status == IndexStatus.done:
+            await websocket.send_text(json.dumps({
+                "type": "done",
+                "repos_done": 0,
+                "repos_total": 0,
+                "synthetic": True,
+            }))
+            # If AI analysis already ran, also send agent_done so the frontend
+            # doesn't open a 90s wait window after the synthetic done event.
+            if developer.skill_scores is not None:
+                await websocket.send_text(json.dumps({"type": "agent_done", "synthetic": True}))
+            logger.info(f"[ws] sent synthetic done for @{username} (already indexed)")
 
     redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
     pubsub = redis.pubsub()

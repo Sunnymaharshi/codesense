@@ -6,6 +6,12 @@ Enter a GitHub username. codesense indexes every public repository, computes a h
 
 ---
 
+## Demo
+
+<video src="demo.mp4" controls width="100%"></video>
+
+---
+
 ## Features
 
 1. **Index** — paste a GitHub username; codesense fans out across every public repo in parallel (Celery), computing a health score (tests, CI, docs, license, activity) for each one with live WebSocket progress

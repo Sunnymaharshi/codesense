@@ -14,6 +14,26 @@ function polarToXY(angle: number, r: number) {
   return { x: CENTER + r * Math.cos(rad), y: CENTER + r * Math.sin(rad) };
 }
 
+function AxisLabel({ label, x, y }: { label: string; x: number; y: number }) {
+  const shared = {
+    textAnchor: "middle" as const,
+    fontSize: "11",
+    fill: "var(--color-fg-muted)",
+    fontFamily: "var(--font-sans)",
+  };
+  const words = label.split(" ");
+  if (words.length === 1) {
+    return <text x={x} y={y} dominantBaseline="middle" {...shared}>{label}</text>;
+  }
+  const mid = Math.ceil(words.length / 2);
+  return (
+    <text x={x} y={y} {...shared}>
+      <tspan x={x} dy="-7">{words.slice(0, mid).join(" ")}</tspan>
+      <tspan x={x} dy="14">{words.slice(mid).join(" ")}</tspan>
+    </text>
+  );
+}
+
 export function SkillRadar({ data }: Props) {
   const { axes = [], summary } = data;
   if (axes.length < 3) return null;
@@ -30,7 +50,7 @@ export function SkillRadar({ data }: Props) {
 
   return (
     <div className={styles.container}>
-      <svg width="100%" viewBox="-20 -20 260 260" className={styles.svg}>
+      <svg width="100%" viewBox="-45 -35 310 300" className={styles.svg}>
         {/* Grid rings */}
         {Array.from({ length: LEVELS }).map((_, li) => {
           const r = (RADIUS / LEVELS) * (li + 1);
@@ -61,21 +81,8 @@ export function SkillRadar({ data }: Props) {
 
         {/* Axis labels */}
         {axes.map((ax, i) => {
-          const pos = polarToXY(i * step, RADIUS + 18);
-          return (
-            <text
-              key={i}
-              x={pos.x}
-              y={pos.y}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontSize="11"
-              fill="var(--color-fg-muted)"
-              fontFamily="var(--font-sans)"
-            >
-              {ax.label}
-            </text>
-          );
+          const pos = polarToXY(i * step, RADIUS + 22);
+          return <AxisLabel key={i} label={ax.label} x={pos.x} y={pos.y} />;
         })}
 
         {/* Score dots */}

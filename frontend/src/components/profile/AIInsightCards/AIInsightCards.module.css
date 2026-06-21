@@ -34,6 +34,11 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.grid:last-child {
+  margin-bottom: 0;
 }
 
 .card {
@@ -79,7 +84,11 @@
   line-height: var(--leading-relaxed);
 }
 
-.word { display: inline; }
+.personaEmpty {
+  font-size: var(--text-sm);
+  color: var(--color-fg-subtle);
+  font-style: italic;
+}
 
 /* Language strip */
 .langStrip {

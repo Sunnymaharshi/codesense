@@ -41,7 +41,8 @@ async def analyze_user(
     developer = result.scalar_one_or_none()
 
     # ── In-progress guard ────────────────────────────────────────────────
-    if developer and developer.index_status in (IndexStatus.pending, IndexStatus.running):
+    # Allow force=True to bypass so stuck "pending"/"running" can be recovered.
+    if not force and developer and developer.index_status in (IndexStatus.pending, IndexStatus.running):
         logger.info(f"[analyze] @{username} indexing already in progress, skipping")
         return AnalyzeResponse(
             developer_id=developer.id,

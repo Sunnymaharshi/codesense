@@ -22,12 +22,12 @@ export function ChatPanel({ username }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const { messages, isStreaming, isOpen, closeChat } = useChatStore();
   const { sendMessage, abort } = useChat(username);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Scroll to bottom on new message
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = messagesRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages.length, isStreaming]);
 
   async function handleSend() {
@@ -77,7 +77,7 @@ export function ChatPanel({ username }: ChatPanelProps) {
             </div>
 
             {/* Messages */}
-            <div className={styles.messages}>
+            <div ref={messagesRef} className={styles.messages}>
               {messages.length === 0 && (
                 <div className={styles.empty}>
                   <p className={styles.emptyTitle}>Ask anything about this developer</p>
@@ -100,7 +100,6 @@ export function ChatPanel({ username }: ChatPanelProps) {
                   <MessageStream message={msg} />
                 </div>
               ))}
-              <div ref={bottomRef} />
             </div>
 
             {/* Input */}

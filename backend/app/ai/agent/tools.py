@@ -7,7 +7,8 @@ import re
 
 from app.services.github import GitHubClient
 
-EMBEDDABLE_EXTENSIONS = {".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java", ".rb", ".cs"}
+EMBEDDABLE_EXTENSIONS = {".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java", ".rb", ".cs",
+                         ".c", ".cpp", ".cc", ".cxx", ".h", ".hpp"}
 SKIP_DIRS = {"node_modules", ".git", "dist", "build", "__pycache__", ".venv", "vendor", "coverage"}
 
 
